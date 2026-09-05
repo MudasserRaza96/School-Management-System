@@ -66,9 +66,18 @@ export class CommonServices {
   private sidebarVisibilitySubject = new BehaviorSubject<boolean>(true);
   sidebarVisibility$ = this.sidebarVisibilitySubject.asObservable();
 
+  private sidebarCollapsedSubject = new BehaviorSubject<boolean>(false);
+  sidebarCollapsed$ = this.sidebarCollapsedSubject.asObservable();
+
   toggleSidebar() {
     this.sidebarVisibilitySubject.next(!this.sidebarVisibilitySubject.value);
   }
 
+  toggleCollapsed() {
+    this.sidebarCollapsedSubject.next(!this.sidebarCollapsedSubject.value);
+  }
 
+  setCollapsed(collapsed: boolean) {
+    this.sidebarCollapsedSubject.next(collapsed);
+  }
 }

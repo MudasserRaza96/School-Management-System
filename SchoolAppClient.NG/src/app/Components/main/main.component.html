@@ -1,11 +1,24 @@
-<div class="app-header">
-  <app-header></app-header>
-</div>
-<div class="container">
+<div class="layout-wrapper" 
+     [class.sidebar-collapsed]="isCollapsed" 
+     [class.sidebar-hidden]="!isSidebarVisible">
+  
+  <!-- Sidebar component -->
   <app-sidebar></app-sidebar>
+
+  <!-- Mobile overlay backdrop -->
+  <div class="sidebar-backdrop" (click)="closeMobileSidebar()"></div>
+
+  <!-- Main right side section -->
+  <div class="main-wrapper">
+    <div class="header-container">
+      <app-header></app-header>
+    </div>
+
+    <main class="page-content">
+      <div class="content-container">
+        <router-outlet></router-outlet>
+      </div>
+    </main>
+  </div>
 </div>
 
-<div class="content" [ngClass]="isSidebarVisible ? 'with-sidebar' : 'without-sidebar'">
-  <!-- Your main content goes here -->
-  <router-outlet></router-outlet>
-</div>

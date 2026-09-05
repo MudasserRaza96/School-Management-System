@@ -1,43 +1,70 @@
-<div class="sidebar" [ngClass]="{ 'showSidebar': isSidebarVisible, 'hideSidebar': !isSidebarVisible }" [@fadeInOut]>
-  <ul>
-    <li>
-      <a routerLink="/home" routerLinkActive="active">
-        <span class="menu-icon material-icons">home</span>
-        <span class="menu-text">Home</span>
-      </a>
-    </li>
+<aside class="sidebar" 
+       [class.showSidebar]="isSidebarVisible" 
+       [class.hideSidebar]="!isSidebarVisible"
+       [class.collapsed]="isCollapsed">
 
-    <li>
-      <a routerLink="/dashboard" routerLinkActive="active">
-        <span class="menu-icon material-icons">dashboard</span>
-        <span class="menu-text">Dashboard</span>
-      </a>
-    </li>
+  <!-- Sidebar Brand Header -->
+  <div class="sidebar-header">
+    <div class="brand-logo-container">
+      <mat-icon class="brand-cap-icon">school</mat-icon>
+    </div>
+    <div class="brand-text-container" *ngIf="!isCollapsed">
+      <span class="brand-title">SMS</span>
+      <span class="brand-subtitle">School Management System</span>
+    </div>
+  </div>
+
+  <!-- Navigation Sections -->
+  <nav class="sidebar-nav">
+    <div *ngFor="let section of menuSections" class="nav-section">
+      <div class="section-header" *ngIf="!isCollapsed">{{ section.title }}</div>
+      <div class="section-divider" *ngIf="isCollapsed"></div>
+
+      <ul class="nav-list">
+        <li *ngFor="let item of section.items" class="nav-item">
+
+          <!-- Regular Menu Item (No Children) -->
+          <ng-container *ngIf="!item.children">
+            <a [routerLink]="item.route" 
+               routerLinkActive="active" 
+               class="nav-link"
+               [attr.title]="isCollapsed ? item.label : null">
+              <mat-icon class="menu-icon">{{ item.icon }}</mat-icon>
+              <span class="menu-text" *ngIf="!isCollapsed">{{ item.label }}</span>
+            </a>
+          </ng-container>
+
+          <!-- Parent Menu Item (Has Children) -->
+          <ng-container *ngIf="item.children">
+            <div class="nav-link parent-link" 
+                 [class.parent-active]="isChildActive(item)"
+                 [class.open]="isSubmenuOpen(item.label)"
+                 (click)="toggleSubmenu(item.label)"
+                 [attr.title]="isCollapsed ? item.label : null">
+              <mat-icon class="menu-icon">{{ item.icon }}</mat-icon>
+              <span class="menu-text" *ngIf="!isCollapsed">{{ item.label }}</span>
+              <mat-icon class="chevron-icon" *ngIf="!isCollapsed">
+                {{ isSubmenuOpen(item.label) ? 'keyboard_arrow_down' : 'chevron_right' }}
+              </mat-icon>
+            </div>
+
+            <!-- Submenu List -->
+            <ul class="submenu" *ngIf="isSubmenuOpen(item.label) && !isCollapsed">
+              <li *ngFor="let child of item.children" class="submenu-item">
+                <a [routerLink]="child.route" 
+                   routerLinkActive="active" 
+                   class="submenu-link">
+                  <mat-icon class="submenu-icon">{{ child.icon }}</mat-icon>
+                  <span class="submenu-text">{{ child.label }}</span>
+                </a>
+              </li>
+            </ul>
+          </ng-container>
+
+        </li>
+      </ul>
+    </div>
+  </nav>
+</aside>
 
 
-    <li>
-      <a routerLink="/grades" routerLinkActive="active">
-        <span class="menu-icon material-icons">grade</span>
-        <span class="menu-text">Grade</span>
-      </a>
-    </li>
-    <li>
-      <a routerLink="/schedule" routerLinkActive="active">
-        <span class="menu-icon material-icons">schedule</span>
-        <span class="menu-text">Schedule</span>
-      </a>
-    </li>
-    <li>
-      <a routerLink="/timetable" routerLinkActive="active">
-        <span class="menu-icon material-icons">access_time</span>
-        <span class="menu-text">Time Table</span>
-      </a>
-    </li>
-    <li>
-      <a routerLink="/settings" routerLinkActive="active">
-        <span class="menu-icon material-icons">settings</span>
-        <span class="menu-text">Setting</span>
-      </a>
-    </li>
-  </ul>
-</div>

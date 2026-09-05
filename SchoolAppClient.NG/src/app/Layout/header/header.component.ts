@@ -16,9 +16,19 @@ export class HeaderComponent {
   constructor(private sidebarService: CommonServices) { }
 
   toggleSidebar() {
-    // Check if the button click event is registered
     this.sidebarService.toggleSidebar();
-    // Check if the visibility state is changing
+  }
+
+  toggleCollapsed() {
+    this.sidebarService.toggleCollapsed();
+  }
+
+  toggleMenu() {
+    if (window.innerWidth <= 768) {
+      this.sidebarService.toggleSidebar();
+    } else {
+      this.sidebarService.toggleCollapsed();
+    }
   }
   ngOnInit() {
 

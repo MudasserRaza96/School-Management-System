@@ -1,47 +1,87 @@
-.container {
+:host {
+  display: block;
+  min-height: 100vh;
+  background-color: #f8fafc;
+}
+
+.layout-wrapper {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background-color: #f8fafc;
+}
+
+/* Right-side main container wrapping Header + Router Outlet */
+.main-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-width: 0;
+  margin-left: 250px; /* Width of expanded sidebar */
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: #f8fafc;
 }
 
-.app-header {
-  position: fixed;
+/* When sidebar is collapsed (icon only) */
+.layout-wrapper.sidebar-collapsed .main-wrapper {
+  margin-left: 72px;
+}
+
+/* When sidebar is hidden */
+.layout-wrapper.sidebar-hidden .main-wrapper {
+  margin-left: 0;
+}
+
+/* Sticky Header container */
+.header-container {
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
+  z-index: 90;
 }
 
-.app-sidenav {
-  flex: 0 0 250px;
-  background-color: #333;
-  color: white;
-  padding: 20px;
+/* Page main body wrapper */
+.page-content {
+  flex: 1;
+  padding: 24px;
+  min-height: calc(100vh - 72px);
+  box-sizing: border-box;
 }
 
-.content {
-  position: fixed;
-  top: 80px;
-  right: 0;
-  bottom: 0;
-  overflow-y: auto;
-  z-index: 999;
+.content-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-  /* Style content differently when sidebar is hidden */
-  .content.content-with-sidebar {
-    margin-left: 0;
+/* Mobile backdrop overlay */
+.sidebar-backdrop {
+  display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .main-wrapper,
+  .layout-wrapper.sidebar-collapsed .main-wrapper,
+  .layout-wrapper.sidebar-hidden .main-wrapper {
+    margin-left: 0 !important;
   }
 
-.with-sidebar {
-  left: 250px;
-  padding: 3px;
-  transition: left 0.3s ease, padding-left 0.3s ease;
+  .page-content {
+    padding: 16px;
+  }
+
+  /* Show overlay backdrop on mobile when sidebar is visible */
+  .layout-wrapper:not(.sidebar-hidden) .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+  }
 }
 
-/* Remove padding when the sidebar is hidden */
-.without-sidebar {
-  left: 25px;
-  padding: 3px;
-  transition: left 0.3s ease, padding-left 0.3s ease;
-}
