@@ -1,0 +1,3 @@
+wwwroot\Upload\Employee.cs.PNG
+wwwroot\Upload\forLOGO.png
+wwwroot\Upload\logoRECIPIENT.png

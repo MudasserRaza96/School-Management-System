@@ -1,0 +1,17 @@
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\bin\Debug\net8.0\SchoolApp.DAL.deps.json
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\bin\Debug\net8.0\SchoolApp.DAL.runtimeconfig.json
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\bin\Debug\net8.0\SchoolApp.DAL.dll
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\bin\Debug\net8.0\SchoolApp.DAL.pdb
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\bin\Debug\net8.0\SchoolApp.Models.dll
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\bin\Debug\net8.0\SchoolApp.Models.pdb
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\SchoolApp.DAL.csproj.AssemblyReference.cache
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\SchoolApp.DAL.GeneratedMSBuildEditorConfig.editorconfig
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\SchoolApp.DAL.AssemblyInfoInputs.cache
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\SchoolApp.DAL.AssemblyInfo.cs
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\SchoolApp.DAL.csproj.CoreCompileInputs.cache
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\SchoolAp.D351D717.Up2Date
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\SchoolApp.DAL.dll
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\refint\SchoolApp.DAL.dll
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\SchoolApp.DAL.pdb
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\SchoolApp.DAL.genruntimeconfig.cache
+E:\projects\SchoolManagementSystem-master\SchoolManagementSystem-master\SchoolApp.DAL\obj\Debug\net8.0\ref\SchoolApp.DAL.dll
