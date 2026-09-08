@@ -3,10 +3,6 @@
   "WorkspaceRootPath": "E:\\projects\\SchoolManagementSystem-master\\SchoolManagementSystem-master\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{F4F72C82-85E8-4374-A821-D59FD9E938C4}|SchoolApiService\\SchoolApiService.csproj|e:\\projects\\schoolmanagementsystem-master\\schoolmanagementsystem-master\\schoolapiservice\\controllers\\studentscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F4F72C82-85E8-4374-A821-D59FD9E938C4}|SchoolApiService\\SchoolApiService.csproj|solutionrelative:schoolapiservice\\controllers\\studentscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{F4F72C82-85E8-4374-A821-D59FD9E938C4}|SchoolApiService\\SchoolApiService.csproj|e:\\projects\\schoolmanagementsystem-master\\schoolmanagementsystem-master\\schoolapiservice\\controllers\\accountcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{F4F72C82-85E8-4374-A821-D59FD9E938C4}|SchoolApiService\\SchoolApiService.csproj|solutionrelative:schoolapiservice\\controllers\\accountcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -43,25 +39,12 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "StudentsController.cs",
-              "DocumentMoniker": "E:\\projects\\SchoolManagementSystem-master\\SchoolManagementSystem-master\\SchoolApiService\\Controllers\\StudentsController.cs",
-              "RelativeDocumentMoniker": "SchoolApiService\\Controllers\\StudentsController.cs",
-              "ToolTip": "E:\\projects\\SchoolManagementSystem-master\\SchoolManagementSystem-master\\SchoolApiService\\Controllers\\StudentsController.cs",
-              "RelativeToolTip": "SchoolApiService\\Controllers\\StudentsController.cs",
-              "ViewState": "AgIAAIAAAAAAAAAAAIA7wD0AAABDAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-04T20:16:03.957Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
               "Title": "AccountController.cs",
               "DocumentMoniker": "E:\\projects\\SchoolManagementSystem-master\\SchoolManagementSystem-master\\SchoolApiService\\Controllers\\AccountController.cs",
               "RelativeDocumentMoniker": "SchoolApiService\\Controllers\\AccountController.cs",
               "ToolTip": "E:\\projects\\SchoolManagementSystem-master\\SchoolManagementSystem-master\\SchoolApiService\\Controllers\\AccountController.cs",
               "RelativeToolTip": "SchoolApiService\\Controllers\\AccountController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAgAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAEsAAAAwAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-09-03T19:00:16.81Z",
               "EditorCaption": ""
