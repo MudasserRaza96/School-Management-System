@@ -30,3 +30,6 @@ SchoolApp.Models/obj/Release/net8.0/SchoolApp.Models.AssemblyInfoInputs.cache
 SchoolApp.Models/obj/Release/net8.0/SchoolApp.Models.assets.cache
 SchoolApp.Models/obj/Release/net8.0/SchoolApp.Models.GeneratedMSBuildEditorConfig.editorconfig
 SchoolApp.Models/obj/Release/net8.0/SchoolApp.Models.GlobalUsings.g.cs
+/SchoolApiService/obj/Debug/net8.0/SchoolApiService.AssemblyInfo.cs
+/.vs/SchoolManagementSystem/FileContentIndex
+/SchoolApiService/obj/Debug/net8.0/SchoolApiService.AssemblyInfoInputs.cache
