@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
 {
@@ -14,25 +8,26 @@ namespace SchoolApiService.Controllers
     [ApiController]
     public class SubjectsController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly ISubjectService _subjectService;
 
-        public SubjectsController(SchoolDbContext context)
+        public SubjectsController(ISubjectService subjectService)
         {
-            _context = context;
+            _subjectService = subjectService;
         }
 
         // GET: api/Subjects
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Subject>>> GetdbsSubject()
         {
-            return await _context.dbsSubject.Include(s => s.Standard).ToListAsync();
+            var subjects = await _subjectService.GetAllAsync();
+            return Ok(subjects);
         }
 
         // GET: api/Subjects/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Subject>> GetSubject(int id)
         {
-            var subject = await _context.dbsSubject.FindAsync(id);
+            var subject = await _subjectService.GetByIdAsync(id);
 
             if (subject == null)
             {
@@ -43,7 +38,6 @@ namespace SchoolApiService.Controllers
         }
 
         // PUT: api/Subjects/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutSubject(int id, Subject subject)
         {
@@ -52,57 +46,45 @@ namespace SchoolApiService.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(subject).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!SubjectExists(id))
+                var result = await _subjectService.UpdateAsync(id, subject);
+                if (!result)
                 {
                     return NotFound();
                 }
-                else
+            }
+            catch (Exception)
+            {
+                if (!await _subjectService.ExistsAsync(id))
                 {
-                    throw;
+                    return NotFound();
                 }
+                throw;
             }
 
             return NoContent();
         }
 
         // POST: api/Subjects
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Subject>> PostSubject(Subject subject)
         {
-            _context.dbsSubject.Add(subject);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetSubject", new { id = subject.SubjectId }, subject);
+            var created = await _subjectService.CreateAsync(subject);
+            return CreatedAtAction("GetSubject", new { id = created.SubjectId }, created);
         }
 
         // DELETE: api/Subjects/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSubject(int id)
         {
-            var subject = await _context.dbsSubject.FindAsync(id);
-            if (subject == null)
+            var success = await _subjectService.DeleteAsync(id);
+            if (!success)
             {
                 return NotFound();
             }
 
-            _context.dbsSubject.Remove(subject);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool SubjectExists(int id)
-        {
-            return _context.dbsSubject.Any(e => e.SubjectId == id);
         }
     }
 }

@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApp.DAL.SchoolContext;
+using SchoolApiService.Services.Interfaces;
 using SchoolApp.Models.DataModels;
 
 namespace SchoolApiService.Controllers
@@ -14,29 +8,26 @@ namespace SchoolApiService.Controllers
     [ApiController]
     public class StudentsController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly IStudentService _studentService;
 
-        public StudentsController(SchoolDbContext context)
+        public StudentsController(IStudentService studentService)
         {
-            _context = context;
+            _studentService = studentService;
         }
 
         // GET: api/Students
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
         {
-            return await _context.dbsStudent
-                .Include(s => s.Standard)
-                .ToListAsync();
+            var students = await _studentService.GetAllStudentsAsync();
+            return Ok(students);
         }
 
         // GET: api/Students/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Student>> GetStudent(int id)
         {
-            var student = await _context.dbsStudent
-                .Include(s => s.Standard)
-                .FirstOrDefaultAsync(s => s.StudentId == id);
+            var student = await _studentService.GetStudentByIdAsync(id);
 
             if (student == null)
             {
@@ -46,103 +37,49 @@ namespace SchoolApiService.Controllers
             return student;
         }
 
-
         // PUT: api/Students/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutStudent(int id, Student student)
         {
-            if (id != student.StudentId)
-            {
-                return BadRequest("Invalid StudentId");
-            }
+            var (succeeded, errorMessage, concurrencyError) = await _studentService.UpdateStudentAsync(id, student);
 
-            if (student.StandardId != null)
+            if (!succeeded)
             {
-                student.Standard = await _context.dbsStandard.FindAsync(student.StandardId);
-                if (student.Standard == null)
-                {
-                    return BadRequest("Invalid StandardId");
-                }
-            }
-
-            _context.Entry(student).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!StudentExists(id))
+                if (concurrencyError)
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                return BadRequest(errorMessage);
             }
 
             return NoContent();
         }
 
         // POST: api/Students
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Student>> PostStudent(Student student)
         {
-            // Check if the StandardId is valid
-            if (student.StandardId != null)
+            var (succeeded, errorMessage, createdStudent) = await _studentService.CreateStudentAsync(student);
+
+            if (!succeeded || createdStudent == null)
             {
-                student.Standard = await _context.dbsStandard.FindAsync(student.StandardId);
-                if (student.Standard == null)
-                {
-                    return BadRequest("Invalid StandardId");
-                }
+                return BadRequest(errorMessage);
             }
 
-            // Check if the ImageUpload is provided
-            if (student.ImageUpload?.ImageData != null)
-            {
-                student.ImagePath = student.ImageUpload?.ImageData;
-            }
-
-            // Add the student to the context
-            _context.dbsStudent.Add(student);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                return BadRequest("Unable to save changes. Please try again.");
-            }
-
-            return CreatedAtAction(nameof(GetStudent), new { id = student.StudentId }, student);
+            return CreatedAtAction(nameof(GetStudent), new { id = createdStudent.StudentId }, createdStudent);
         }
-
 
         // DELETE: api/Students/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStudent(int id)
         {
-            var student = await _context.dbsStudent.FindAsync(id);
-            if (student == null)
+            var deleted = await _studentService.DeleteStudentAsync(id);
+            if (!deleted)
             {
                 return NotFound();
             }
 
-            _context.dbsStudent.Remove(student);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool StudentExists(int id)
-        {
-            return _context.dbsStudent.Any(e => e.StudentId == id);
         }
     }
 }

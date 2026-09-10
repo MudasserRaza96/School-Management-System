@@ -1,8 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApiService.Services;
-using SchoolApp.DAL.SchoolContext;
+using SchoolApiService.Services.Interfaces;
 using SchoolApp.Models.DataModels.SecurityModels;
 
 namespace SchoolApiService.Controllers
@@ -11,82 +8,63 @@ namespace SchoolApiService.Controllers
     [Route("/api/[controller]")]
     public class UsersController : ControllerBase
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly SchoolDbContext _context;
-        private readonly ITokenService _tokenService;
+        private readonly IUserService _userService;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(
-            UserManager<ApplicationUser> userManager,
-            RoleManager<IdentityRole> roleManager,
-            SchoolDbContext context,
-            ITokenService tokenService, ILogger<UsersController> logger
-            )
+        public UsersController(IUserService userService, ILogger<UsersController> logger)
         {
-            _userManager = userManager;
-            _roleManager = roleManager;
-            _context = context;
-            _tokenService = tokenService;
+            _userService = userService;
+            _logger = logger;
         }
 
-
-        [HttpPost]
-        [Route("register")]
-        public async Task<IActionResult> Register(RegistrationRequest request)
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegistrationRequest request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var result = await _userManager.CreateAsync(
-                new ApplicationUser { UserName = request.Username, Email = request.Email, Role = request.Role },
-                request.Password!
-            );
+            var (succeeded, errors, registeredRequest) = await _userService.RegisterAsync(request);
 
-            if (result.Succeeded)
+            if (succeeded && registeredRequest != null)
             {
-                request.Password = "";
-                return CreatedAtAction(nameof(Register), new { email = request.Email, role = request.Role }, request);
+                return CreatedAtAction(nameof(Register), new { email = registeredRequest.Email, role = registeredRequest.Role }, registeredRequest);
             }
 
-            foreach (var error in result.Errors)
+            if (errors != null)
             {
-                ModelState.AddModelError(error.Code, error.Description);
+                foreach (var error in errors)
+                {
+                    ModelState.AddModelError(error.Code, error.Description);
+                }
             }
 
             return BadRequest(ModelState);
         }
 
-        [HttpPost]
-        [Route("create-role")]
+        [HttpPost("create-role")]
         public async Task<ActionResult> CreateRole([FromBody] UserRoleDto request)
         {
-            IdentityRole role = new IdentityRole()
-            {
-                Name = request.Name,
-            };
+            var (succeeded, errors) = await _userService.CreateRoleAsync(request);
 
-            var result = await _roleManager.CreateAsync(role);
-
-            if (result.Succeeded)
+            if (succeeded)
             {
                 return Ok(request);
             }
-            foreach (var error in result.Errors)
+
+            if (errors != null)
             {
-                ModelState.AddModelError(error.Code, error.Description);
+                foreach (var error in errors)
+                {
+                    ModelState.AddModelError(error.Code, error.Description);
+                }
             }
 
             return BadRequest(ModelState);
         }
 
-
-
-
-
-        [HttpPost()]//https://domain.com/api/users/login
-        [Route("login")]//https://domain.com/login
+        [HttpPost("login")]
         public async Task<ActionResult<AuthResponse>> Authenticate([FromBody] AuthRequest request)
         {
             if (!ModelState.IsValid)
@@ -94,41 +72,21 @@ namespace SchoolApiService.Controllers
                 return BadRequest(ModelState);
             }
 
-            var managedUser = await _userManager.FindByEmailAsync(request.Email!);
+            var (succeeded, errorMessage, response) = await _userService.AuthenticateAsync(request);
 
-            if (managedUser == null)
+            if (!succeeded)
             {
-                return BadRequest("Bad credentials");
+                if (errorMessage == "User not found in database")
+                {
+                    return Unauthorized(request);
+                }
+                return BadRequest(errorMessage ?? "Bad credentials");
             }
 
-            var isPasswordValid = await _userManager.CheckPasswordAsync(managedUser, request.Password!);
-
-            if (!isPasswordValid)
-            {
-                return BadRequest("Bad credentials");
-            }
-
-            var userInDb = _context.Users.FirstOrDefault(u => u.Email == request.Email);
-
-            if (userInDb is null)
-            {
-                return Unauthorized(request);
-            }
-
-            var accessToken = _tokenService.CreateToken(userInDb);
-            await _context.SaveChangesAsync();
-
-            return Ok(new AuthResponse
-            {
-                Username = userInDb.UserName,
-                Email = userInDb.Email,
-                Token = accessToken,
-            });
+            return Ok(response);
         }
 
-
-        [HttpPost]
-        [Route("logout")]
+        [HttpPost("logout")]
         public async Task<ActionResult> Logout()
         {
             return Ok();

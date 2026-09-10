@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApp.DAL.SchoolContext;
+using Microsoft.AspNetCore.Mvc;
 using SchoolApp.Models.DataModels;
-
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
 {
@@ -10,25 +8,26 @@ namespace SchoolApiService.Controllers
     [ApiController]
     public class DepartmentsController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly IDepartmentService _departmentService;
 
-        public DepartmentsController(SchoolDbContext context)
+        public DepartmentsController(IDepartmentService departmentService)
         {
-            _context = context;
+            _departmentService = departmentService;
         }
 
         // GET: api/Departments
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Department>>> GetdbsDepartment()
         {
-            return await _context.dbsDepartment.ToListAsync();
+            var departments = await _departmentService.GetAllAsync();
+            return Ok(departments);
         }
 
         // GET: api/Departments/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Department>> GetDepartment(int id)
         {
-            var department = await _context.dbsDepartment.FindAsync(id);
+            var department = await _departmentService.GetByIdAsync(id);
 
             if (department == null)
             {
@@ -39,7 +38,6 @@ namespace SchoolApiService.Controllers
         }
 
         // PUT: api/Departments/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutDepartment(int id, Department department)
         {
@@ -48,57 +46,45 @@ namespace SchoolApiService.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(department).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!DepartmentExists(id))
+                var result = await _departmentService.UpdateAsync(id, department);
+                if (!result)
                 {
                     return NotFound();
                 }
-                else
+            }
+            catch (Exception)
+            {
+                if (!await _departmentService.ExistsAsync(id))
                 {
-                    throw;
+                    return NotFound();
                 }
+                throw;
             }
 
             return NoContent();
         }
 
         // POST: api/Departments
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Department>> PostDepartment(Department department)
         {
-            _context.dbsDepartment.Add(department);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetDepartment", new { id = department.DepartmentId }, department);
+            var created = await _departmentService.CreateAsync(department);
+            return CreatedAtAction("GetDepartment", new { id = created.DepartmentId }, created);
         }
 
         // DELETE: api/Departments/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteDepartment(int id)
         {
-            var department = await _context.dbsDepartment.FindAsync(id);
-            if (department == null)
+            var success = await _departmentService.DeleteAsync(id);
+            if (!success)
             {
                 return NotFound();
             }
 
-            _context.dbsDepartment.Remove(department);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool DepartmentExists(int id)
-        {
-            return _context.dbsDepartment.Any(e => e.DepartmentId == id);
         }
     }
 }

@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
 {
@@ -14,25 +8,26 @@ namespace SchoolApiService.Controllers
     [ApiController]
     public class FeeTypesController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly IFeeTypeService _feeTypeService;
 
-        public FeeTypesController(SchoolDbContext context)
+        public FeeTypesController(IFeeTypeService feeTypeService)
         {
-            _context = context;
+            _feeTypeService = feeTypeService;
         }
 
         // GET: api/FeeTypes
         [HttpGet]
         public async Task<ActionResult<IEnumerable<FeeType>>> GetdbsFeeType()
         {
-            return await _context.dbsFeeType.ToListAsync();
+            var feeTypes = await _feeTypeService.GetAllAsync();
+            return Ok(feeTypes);
         }
 
         // GET: api/FeeTypes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<FeeType>> GetFeeType(int id)
         {
-            var feeType = await _context.dbsFeeType.FindAsync(id);
+            var feeType = await _feeTypeService.GetByIdAsync(id);
 
             if (feeType == null)
             {
@@ -43,7 +38,6 @@ namespace SchoolApiService.Controllers
         }
 
         // PUT: api/FeeTypes/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutFeeType(int id, FeeType feeType)
         {
@@ -52,57 +46,45 @@ namespace SchoolApiService.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(feeType).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!FeeTypeExists(id))
+                var result = await _feeTypeService.UpdateAsync(id, feeType);
+                if (!result)
                 {
                     return NotFound();
                 }
-                else
+            }
+            catch (Exception)
+            {
+                if (!await _feeTypeService.ExistsAsync(id))
                 {
-                    throw;
+                    return NotFound();
                 }
+                throw;
             }
 
             return NoContent();
         }
 
         // POST: api/FeeTypes
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<FeeType>> PostFeeType(FeeType feeType)
         {
-            _context.dbsFeeType.Add(feeType);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetFeeType", new { id = feeType.FeeTypeId }, feeType);
+            var created = await _feeTypeService.CreateAsync(feeType);
+            return CreatedAtAction("GetFeeType", new { id = created.FeeTypeId }, created);
         }
 
         // DELETE: api/FeeTypes/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteFeeType(int id)
         {
-            var feeType = await _context.dbsFeeType.FindAsync(id);
-            if (feeType == null)
+            var success = await _feeTypeService.DeleteAsync(id);
+            if (!success)
             {
                 return NotFound();
             }
 
-            _context.dbsFeeType.Remove(feeType);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool FeeTypeExists(int id)
-        {
-            return _context.dbsFeeType.Any(e => e.FeeTypeId == id);
         }
     }
 }

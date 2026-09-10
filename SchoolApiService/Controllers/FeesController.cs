@@ -1,9 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApp.DAL.SchoolContext;
+using Microsoft.AspNetCore.Mvc;
 using SchoolApp.Models.DataModels;
-
-
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
 {
@@ -11,11 +8,11 @@ namespace SchoolApiService.Controllers
     [ApiController]
     public class FeesController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly IFeeService _feeService;
 
-        public FeesController(SchoolDbContext context)
+        public FeesController(IFeeService feeService)
         {
-            _context = context;
+            _feeService = feeService;
         }
 
         // GET: api/Fees
@@ -24,29 +21,21 @@ namespace SchoolApiService.Controllers
         {
             try
             {
-                var fees = await _context.fees
-
-                    .Include(fp => fp.feeType)
-                    .Include(fp => fp.standard)
-                    .ToListAsync();
-
+                var fees = await _feeService.GetAllAsync();
                 return Ok(fees);
             }
             catch (Exception ex)
             {
-                // Log the exception for debugging purposes
                 Console.WriteLine($"Exception: {ex}");
-
                 return StatusCode(500, $"Internal Server Error: {ex.Message}");
             }
-
         }
 
         // GET: api/Fees/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Fee>> GetFee(int id)
         {
-            var fee = await _context.fees.FindAsync(id);
+            var fee = await _feeService.GetByIdAsync(id);
 
             if (fee == null)
             {
@@ -57,7 +46,6 @@ namespace SchoolApiService.Controllers
         }
 
         // PUT: api/Fees/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutFee(int id, Fee fee)
         {
@@ -66,57 +54,45 @@ namespace SchoolApiService.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(fee).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!FeeExists(id))
+                var result = await _feeService.UpdateAsync(id, fee);
+                if (!result)
                 {
                     return NotFound();
                 }
-                else
+            }
+            catch (Exception)
+            {
+                if (!await _feeService.ExistsAsync(id))
                 {
-                    throw;
+                    return NotFound();
                 }
+                throw;
             }
 
             return NoContent();
         }
 
         // POST: api/Fees
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Fee>> PostFee(Fee fee)
         {
-            _context.fees.Add(fee);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetFee", new { id = fee.FeeId }, fee);
+            var created = await _feeService.CreateAsync(fee);
+            return CreatedAtAction("GetFee", new { id = created.FeeId }, created);
         }
 
         // DELETE: api/Fees/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteFee(int id)
         {
-            var fee = await _context.fees.FindAsync(id);
-            if (fee == null)
+            var success = await _feeService.DeleteAsync(id);
+            if (!success)
             {
                 return NotFound();
             }
 
-            _context.fees.Remove(fee);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool FeeExists(int id)
-        {
-            return _context.fees.Any(e => e.FeeId == id);
         }
     }
 }

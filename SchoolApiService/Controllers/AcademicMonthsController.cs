@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApp.DAL.SchoolContext;
+using Microsoft.AspNetCore.Mvc;
 using SchoolApp.Models.DataModels;
-
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
 {
@@ -10,25 +8,26 @@ namespace SchoolApiService.Controllers
     [ApiController]
     public class AcademicMonthsController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly IAcademicMonthService _academicMonthService;
 
-        public AcademicMonthsController(SchoolDbContext context)
+        public AcademicMonthsController(IAcademicMonthService academicMonthService)
         {
-            _context = context;
+            _academicMonthService = academicMonthService;
         }
 
         // GET: api/AcademicMonths
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AcademicMonth>>> GetdbsAcademicMonths()
         {
-            return await _context.dbsAcademicMonths.ToListAsync();
+            var months = await _academicMonthService.GetAllAsync();
+            return Ok(months);
         }
 
         // GET: api/AcademicMonths/5
         [HttpGet("{id}")]
         public async Task<ActionResult<AcademicMonth>> GetAcademicMonth(int id)
         {
-            var academicMonth = await _context.dbsAcademicMonths.FindAsync(id);
+            var academicMonth = await _academicMonthService.GetByIdAsync(id);
 
             if (academicMonth == null)
             {
@@ -39,7 +38,6 @@ namespace SchoolApiService.Controllers
         }
 
         // PUT: api/AcademicMonths/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutAcademicMonth(int id, AcademicMonth academicMonth)
         {
@@ -48,57 +46,45 @@ namespace SchoolApiService.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(academicMonth).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!AcademicMonthExists(id))
+                var result = await _academicMonthService.UpdateAsync(id, academicMonth);
+                if (!result)
                 {
                     return NotFound();
                 }
-                else
+            }
+            catch (Exception)
+            {
+                if (!await _academicMonthService.ExistsAsync(id))
                 {
-                    throw;
+                    return NotFound();
                 }
+                throw;
             }
 
             return NoContent();
         }
 
         // POST: api/AcademicMonths
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<AcademicMonth>> PostAcademicMonth(AcademicMonth academicMonth)
         {
-            _context.dbsAcademicMonths.Add(academicMonth);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetAcademicMonth", new { id = academicMonth.MonthId }, academicMonth);
+            var created = await _academicMonthService.CreateAsync(academicMonth);
+            return CreatedAtAction("GetAcademicMonth", new { id = created.MonthId }, created);
         }
 
         // DELETE: api/AcademicMonths/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAcademicMonth(int id)
         {
-            var academicMonth = await _context.dbsAcademicMonths.FindAsync(id);
-            if (academicMonth == null)
+            var success = await _academicMonthService.DeleteAsync(id);
+            if (!success)
             {
                 return NotFound();
             }
 
-            _context.dbsAcademicMonths.Remove(academicMonth);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool AcademicMonthExists(int id)
-        {
-            return _context.dbsAcademicMonths.Any(e => e.MonthId == id);
         }
     }
 }

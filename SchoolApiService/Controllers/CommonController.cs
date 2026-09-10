@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApp.DAL.SchoolContext;
+using Microsoft.AspNetCore.Mvc;
 using SchoolApp.Models.DataModels;
-
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
 {
@@ -10,32 +8,27 @@ namespace SchoolApiService.Controllers
     [ApiController]
     public class CommonController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly ICommonService _commonService;
 
-        public CommonController(SchoolDbContext context)
+        public CommonController(ICommonService commonService)
         {
-            _context = context;
+            _commonService = commonService;
         }
 
         // GET: api/Common/Frequency
         [HttpGet("Frequency")]
         public ActionResult<string[]> GetFrequency()
         {
-            // Retrieve the enum values
-            string[] frequencies = Enum.GetNames(typeof(Frequency));
+            var frequencies = _commonService.GetFrequencies();
             return Ok(frequencies);
         }
 
         [HttpGet("GetAllPaymentByStudentId/{studentId}")]
         public async Task<ActionResult<IEnumerable<MonthlyPayment>>> GetAllPaymentByStudentId(int studentId)
         {
-            var payments = await _context.monthlyPayments
-                .Include(p => p.PaymentDetails) // Include PaymentDetails
-        .Include(p => p.paymentMonths) // Include paymentMonths
-        .Where(p => p.StudentId == studentId)
-                .ToListAsync();
+            var payments = (await _commonService.GetAllPaymentByStudentIdAsync(studentId)).ToList();
 
-            if (payments == null || payments.Count == 0)
+            if (payments.Count == 0)
             {
                 return NotFound();
             }
@@ -46,12 +39,9 @@ namespace SchoolApiService.Controllers
         [HttpGet("GetAllOtherPaymentByStudentId/{studentId}")]
         public async Task<ActionResult<IEnumerable<OthersPayment>>> GetAllOtherPaymentByStudentId(int studentId)
         {
-            var otherPayments = await _context.othersPayments
-                .Include(p => p.otherPaymentDetails)
-                .Where(p => p.StudentId == studentId)
-                .ToListAsync();
+            var otherPayments = (await _commonService.GetAllOtherPaymentByStudentIdAsync(studentId)).ToList();
 
-            if (otherPayments == null || otherPayments.Count == 0)
+            if (otherPayments.Count == 0)
             {
                 return NotFound();
             }
@@ -59,21 +49,19 @@ namespace SchoolApiService.Controllers
             return otherPayments;
         }
 
-
-
-
         // GET: api/Common/DueBalances
         [HttpGet("DueBalances")]
         public async Task<ActionResult<IEnumerable<DueBalance>>> GetDueBalances()
         {
-            return await _context.dbsDueBalance.ToListAsync();
+            var dueBalances = await _commonService.GetDueBalancesAsync();
+            return Ok(dueBalances);
         }
 
         // GET: api/Common/DueBalances/5
         [HttpGet("DueBalances/{id}")]
         public async Task<ActionResult<DueBalance>> GetDueBalance(int id)
         {
-            var dueBalance = await _context.dbsDueBalance.FindAsync(id);
+            var dueBalance = await _commonService.GetDueBalanceByIdAsync(id);
 
             if (dueBalance == null)
             {
@@ -83,74 +71,17 @@ namespace SchoolApiService.Controllers
             return dueBalance;
         }
 
-
-        //[HttpGet("GetPaymentDetailsByStudentId/{studentId}")]
-        //public async Task<ActionResult<IEnumerable<object>>> GetPaymentDetailsByStudentId(int studentId)
-        //{
-        //    var result = await _context.PaymentDetails
-        //        .Join(_context.monthlyPayments, pd => pd.MonthlyPaymentId, mp => mp.MonthlyPaymentId, (pd, mp) => new { pd, mp })
-        //        .Join(_context.paymentMonths, pdmp => pdmp.mp.MonthlyPaymentId, pm => pm.MonthlyPaymentId, (pdmp, pm) => new { pdmp, pm })
-        //        .Where(x => x.pdmp.mp.StudentId == studentId)
-        //        .GroupBy(x => new { x.pdmp.pd.FeeName, x.pm.MonthName })
-        //        .Select(group => new
-        //        {
-        //            FeeName = group.Key.FeeName,
-        //            MonthName = group.Key.MonthName,
-        //            NumberOfMonths = group.Count()
-        //        })
-        //        .OrderBy(entry => entry.FeeName)
-
-        //        .ToListAsync();
-
-        //    if (result == null || result.Count == 0)
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    return Ok(result);
-        //}
-
-
-
-
-
-
-
         [HttpGet("GetPaymentDetailsByStudentId/{studentId}")]
         public async Task<ActionResult<IEnumerable<object>>> GetPaymentDetailsByStudentId(int studentId)
         {
-            var result = await _context.PaymentDetails
-                .Join(_context.monthlyPayments, pd => pd.MonthlyPaymentId, mp => mp.MonthlyPaymentId, (pd, mp) => new { pd, mp })
-                .Join(_context.paymentMonths, pdmp => pdmp.mp.MonthlyPaymentId, pm => pm.MonthlyPaymentId, (pdmp, pm) => new { pdmp, pm })
-                .Where(x => x.pdmp.mp.StudentId == studentId)
-                .GroupBy(x => new { x.pdmp.pd.FeeName })
-                .Select(group => new
-                {
-                    FeeName = group.Key.FeeName,
-                    Months = group.Select(g => g.pm.MonthName).Distinct().ToList(),
-                    NumberOfMonths = group.Count()
-                })
-                .OrderBy(entry => entry.FeeName)
-                .ToListAsync();
+            var result = (await _commonService.GetPaymentDetailsByStudentIdAsync(studentId)).ToList();
 
-            if (result == null || result.Count == 0)
+            if (result.Count == 0)
             {
                 return NotFound();
             }
 
             return Ok(result);
         }
-
-
-
-
-
-
-
-
-
-
-
-
     }
 }

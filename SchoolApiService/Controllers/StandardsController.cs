@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
 {
@@ -14,34 +8,26 @@ namespace SchoolApiService.Controllers
     [ApiController]
     public class StandardsController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly IStandardService _standardService;
 
-        public StandardsController(SchoolDbContext context)
+        public StandardsController(IStandardService standardService)
         {
-            _context = context;
+            _standardService = standardService;
         }
 
         // GET: api/Standards
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Standard>>> GetdbsStandard()
         {
-            return await _context.dbsStandard
-                .Include(m => m.Subjects)
-                .Include(m => m.ExamScheduleStandards)
-                .Include(m => m.Students)
-                .ToListAsync();
+            var standards = await _standardService.GetAllAsync();
+            return Ok(standards);
         }
 
         // GET: api/Standards/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Standard>> GetStandard(int id)
         {
-            var standard = await _context.dbsStandard
-                .Include(m => m.Subjects)
-                .Include(m => m.ExamScheduleStandards)
-                .Include(m => m.Students)
-                .FirstOrDefaultAsync(m => m.StandardId == id);
-
+            var standard = await _standardService.GetByIdAsync(id);
 
             if (standard == null)
             {
@@ -52,7 +38,6 @@ namespace SchoolApiService.Controllers
         }
 
         // PUT: api/Standards/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutStandard(int id, Standard standard)
         {
@@ -61,83 +46,49 @@ namespace SchoolApiService.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(standard).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!StandardExists(id))
+                var result = await _standardService.UpdateAsync(id, standard);
+                if (!result)
                 {
                     return NotFound();
                 }
-                else
+            }
+            catch (Exception)
+            {
+                if (!await _standardService.ExistsAsync(id))
                 {
-                    throw;
+                    return NotFound();
                 }
+                throw;
             }
 
             return NoContent();
         }
 
         // POST: api/Standards
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Standard>> PostStandard(Standard standard)
         {
-            _context.dbsStandard.Add(standard);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetStandard", new { id = standard.StandardId }, standard);
+            var created = await _standardService.CreateAsync(standard);
+            return CreatedAtAction("GetStandard", new { id = created.StandardId }, created);
         }
 
         // DELETE: api/Standards/5
-        //[HttpDelete("{id}")]
-        //public async Task<IActionResult> DeleteStandard(int id)
-        //{
-        //    var standard = await _context.dbsStandard.FindAsync(id);
-        //    if (standard == null)
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    _context.dbsStandard.Remove(standard);
-        //    await _context.SaveChangesAsync();
-
-        //    return NoContent();
-        //}
-
-
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStandard(int id)
         {
-            var standard = await _context.dbsStandard.FindAsync(id);
-            if (standard == null)
+            var (success, errorMessage) = await _standardService.DeleteAsync(id);
+            if (!success)
             {
+                if (errorMessage != null)
+                {
+                    return BadRequest(errorMessage);
+                }
                 return NotFound();
             }
 
-            // Check if there are any students referencing this standard
-            var hasStudents = await _context.dbsStudent.AnyAsync(s => s.StandardId == id);
-            if (hasStudents)
-            {
-                // Return an error message or prompt user to handle students first
-                return BadRequest("Cannot delete Standard with associated Students.");
-            }
-
-            _context.dbsStandard.Remove(standard);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-
-
-        private bool StandardExists(int id)
-        {
-            return _context.dbsStandard.Any(e => e.StandardId == id);
         }
     }
 }

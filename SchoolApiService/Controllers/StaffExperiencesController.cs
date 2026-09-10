@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApp.DAL.SchoolContext;
+using SchoolApiService.Services.Interfaces;
 using SchoolApp.Models.DataModels;
 
 namespace SchoolApiService.Controllers
@@ -14,25 +8,26 @@ namespace SchoolApiService.Controllers
     [ApiController]
     public class StaffExperiencesController : ControllerBase
     {
-        private readonly SchoolDbContext _context;
+        private readonly IStaffExperienceService _staffExperienceService;
 
-        public StaffExperiencesController(SchoolDbContext context)
+        public StaffExperiencesController(IStaffExperienceService staffExperienceService)
         {
-            _context = context;
+            _staffExperienceService = staffExperienceService;
         }
 
         // GET: api/StaffExperiences
         [HttpGet]
         public async Task<ActionResult<IEnumerable<StaffExperience>>> GetdbsStaffExperience()
         {
-            return await _context.dbsStaffExperience.ToListAsync();
+            var experiences = await _staffExperienceService.GetAllStaffExperiencesAsync();
+            return Ok(experiences);
         }
 
         // GET: api/StaffExperiences/5
         [HttpGet("{id}")]
         public async Task<ActionResult<StaffExperience>> GetStaffExperience(int id)
         {
-            var staffExperience = await _context.dbsStaffExperience.FindAsync(id);
+            var staffExperience = await _staffExperienceService.GetStaffExperienceByIdAsync(id);
 
             if (staffExperience == null)
             {
@@ -43,66 +38,42 @@ namespace SchoolApiService.Controllers
         }
 
         // PUT: api/StaffExperiences/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutStaffExperience(int id, StaffExperience staffExperience)
         {
-            if (id != staffExperience.StaffExperienceId)
-            {
-                return BadRequest();
-            }
+            var (succeeded, concurrencyError) = await _staffExperienceService.UpdateStaffExperienceAsync(id, staffExperience);
 
-            _context.Entry(staffExperience).State = EntityState.Modified;
-
-            try
+            if (!succeeded)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!StaffExperienceExists(id))
+                if (concurrencyError)
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                return BadRequest();
             }
 
             return NoContent();
         }
 
         // POST: api/StaffExperiences
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<StaffExperience>> PostStaffExperience(StaffExperience staffExperience)
         {
-            _context.dbsStaffExperience.Add(staffExperience);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetStaffExperience", new { id = staffExperience.StaffExperienceId }, staffExperience);
+            var createdExperience = await _staffExperienceService.CreateStaffExperienceAsync(staffExperience);
+            return CreatedAtAction("GetStaffExperience", new { id = createdExperience.StaffExperienceId }, createdExperience);
         }
 
         // DELETE: api/StaffExperiences/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStaffExperience(int id)
         {
-            var staffExperience = await _context.dbsStaffExperience.FindAsync(id);
-            if (staffExperience == null)
+            var deleted = await _staffExperienceService.DeleteStaffExperienceAsync(id);
+            if (!deleted)
             {
                 return NotFound();
             }
 
-            _context.dbsStaffExperience.Remove(staffExperience);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool StaffExperienceExists(int id)
-        {
-            return _context.dbsStaffExperience.Any(e => e.StaffExperienceId == id);
         }
     }
 }
