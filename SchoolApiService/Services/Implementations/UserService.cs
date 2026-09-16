@@ -45,17 +45,86 @@ namespace SchoolApiService.Services.Implementations
             return (false, result.Errors, null);
         }
 
-        public async Task<(bool Succeeded, IEnumerable<IdentityError>? Errors)> CreateRoleAsync(UserRoleDto request)
+        public async Task<List<UserRoleDto>> GetAllRolesAsync()
+        {
+            var roles = await _roleManager.Roles.ToListAsync();
+            return roles.Select(r => new UserRoleDto
+            {
+                Id = r.Id,
+                Name = r.Name ?? string.Empty
+            }).ToList();
+        }
+
+        public async Task<UserRoleDto?> GetRoleByIdAsync(string id)
+        {
+            var role = await _roleManager.FindByIdAsync(id);
+            if (role == null) return null;
+
+            return new UserRoleDto
+            {
+                Id = role.Id,
+                Name = role.Name ?? string.Empty
+            };
+        }
+
+        public async Task<(bool Succeeded, IEnumerable<IdentityError>? Errors, UserRoleDto? Role)> CreateRoleAsync(UserRoleDto request)
         {
             var role = new IdentityRole { Name = request.Name };
             var result = await _roleManager.CreateAsync(role);
 
             if (result.Succeeded)
             {
-                return (true, null);
+                request.Id = role.Id;
+                return (true, null, request);
             }
 
-            return (false, result.Errors);
+            return (false, result.Errors, null);
+        }
+
+        public async Task<(bool Succeeded, IEnumerable<IdentityError>? Errors, string? Message)> UpdateRoleAsync(string id, UserRoleDto request)
+        {
+            var role = await _roleManager.FindByIdAsync(id);
+            if (role == null)
+            {
+                var identityError = new IdentityError
+                {
+                    Code = "RoleNotFound",
+                    Description = $"Role with Id '{id}' was not found."
+                };
+                return (false, new[] { identityError }, $"Role with Id '{id}' not found.");
+            }
+
+            role.Name = request.Name;
+            var result = await _roleManager.UpdateAsync(role);
+
+            if (result.Succeeded)
+            {
+                return (true, null, $"Role '{request.Name}' updated successfully.");
+            }
+
+            return (false, result.Errors, "Failed to update role.");
+        }
+
+        public async Task<(bool Succeeded, IEnumerable<IdentityError>? Errors, string? Message)> DeleteRoleAsync(string id)
+        {
+            var role = await _roleManager.FindByIdAsync(id);
+            if (role == null)
+            {
+                var identityError = new IdentityError
+                {
+                    Code = "RoleNotFound",
+                    Description = $"Role with Id '{id}' was not found."
+                };
+                return (false, new[] { identityError }, $"Role with Id '{id}' not found.");
+            }
+
+            var result = await _roleManager.DeleteAsync(role);
+            if (result.Succeeded)
+            {
+                return (true, null, $"Role '{role.Name}' deleted successfully.");
+            }
+
+            return (false, result.Errors, "Failed to delete role.");
         }
 
         public async Task<(bool Succeeded, string? ErrorMessage, AuthResponse? Response)> AuthenticateAsync(AuthRequest request)
@@ -89,6 +158,76 @@ namespace SchoolApiService.Services.Implementations
             };
 
             return (true, null, response);
+        }
+
+        public async Task<(bool Succeeded, IEnumerable<IdentityError>? Errors, string? Message)> AssignRoleAsync(AssignRoleDto request)
+        {
+            var user = await _userManager.FindByNameAsync(request.Username) 
+                       ?? await _userManager.FindByEmailAsync(request.Username);
+
+            if (user == null)
+            {
+                var identityError = new IdentityError
+                {
+                    Code = "UserNotFound",
+                    Description = $"User '{request.Username}' was not found."
+                };
+                return (false, new[] { identityError }, $"User '{request.Username}' not found.");
+            }
+
+            var rolesToAssign = new List<string>();
+            if (!string.IsNullOrWhiteSpace(request.Role))
+            {
+                rolesToAssign.Add(request.Role);
+            }
+
+            if (request.Roles != null && request.Roles.Count > 0)
+            {
+                foreach (var r in request.Roles)
+                {
+                    if (!string.IsNullOrWhiteSpace(r) && !rolesToAssign.Contains(r))
+                    {
+                        rolesToAssign.Add(r);
+                    }
+                }
+            }
+
+            if (rolesToAssign.Count == 0)
+            {
+                var identityError = new IdentityError
+                {
+                    Code = "NoRolesProvided",
+                    Description = "No role specified to assign."
+                };
+                return (false, new[] { identityError }, "No role specified.");
+            }
+
+            foreach (var roleName in rolesToAssign)
+            {
+                var roleExists = await _roleManager.RoleExistsAsync(roleName);
+                if (!roleExists)
+                {
+                    await _roleManager.CreateAsync(new IdentityRole { Name = roleName });
+                }
+            }
+
+            var result = await _userManager.AddToRolesAsync(user, rolesToAssign);
+            if (!result.Succeeded)
+            {
+                return (false, result.Errors, "Failed to assign role(s).");
+            }
+
+            user.Role ??= new List<string>();
+            foreach (var roleName in rolesToAssign)
+            {
+                if (!user.Role.Contains(roleName))
+                {
+                    user.Role.Add(roleName);
+                }
+            }
+            await _userManager.UpdateAsync(user);
+
+            return (true, null, $"Role(s) [{string.Join(", ", rolesToAssign)}] assigned successfully to user '{user.UserName}'.");
         }
     }
 }

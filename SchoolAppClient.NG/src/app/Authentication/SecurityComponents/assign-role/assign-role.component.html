@@ -1,0 +1,88 @@
+<div class="assign-role-container">
+  <div class="card form-card">
+    <div class="card-header">
+      <div class="header-icon-wrapper">
+        <mat-icon class="header-icon">person_add</mat-icon>
+      </div>
+      <div>
+        <h3 class="card-title">Assign Security Role to User</h3>
+        <p class="card-subtitle">Select a target user by username/email and assign a security role</p>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <!-- Success Banner -->
+      <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
+        <mat-icon class="alert-icon">check_circle</mat-icon>
+        <span>{{ successMessage }}</span>
+        <button type="button" class="btn-close" (click)="clearMessages()"></button>
+      </div>
+
+      <!-- Error Banner -->
+      <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <mat-icon class="alert-icon">error</mat-icon>
+        <span>{{ errorMessage }}</span>
+        <button type="button" class="btn-close" (click)="clearMessages()"></button>
+      </div>
+
+      <form (ngSubmit)="assignRole()">
+        <!-- Username / Email Input -->
+        <div class="mb-4">
+          <label class="form-label">
+            <mat-icon class="label-icon">person</mat-icon>
+            Username or Email Address <span class="text-danger">*</span>
+          </label>
+          <input 
+            type="text" 
+            class="form-control form-control-lg" 
+            placeholder="e.g. johndoe or user@school.com" 
+            [(ngModel)]="username" 
+            name="username"
+            required 
+          />
+          <div class="form-text text-muted">
+            Enter the exact username or email of the registered user.
+          </div>
+        </div>
+
+        <!-- Role Select Dropdown -->
+        <div class="mb-4">
+          <label class="form-label">
+            <mat-icon class="label-icon">admin_panel_settings</mat-icon>
+            Select Role <span class="text-danger">*</span>
+          </label>
+
+          <select 
+            class="form-select form-select-lg" 
+            [(ngModel)]="selectedRole" 
+            name="selectedRole" 
+            required
+            [disabled]="isLoadingRoles"
+          >
+            <option value="" disabled selected>-- Select a Security Role --</option>
+            <option *ngFor="let role of roles" [value]="role.name">
+              {{ role.name }}
+            </option>
+          </select>
+
+          <div *ngIf="isLoadingRoles" class="form-text text-info">
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span> Loading roles list...
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="d-grid gap-2">
+          <button 
+            type="submit" 
+            class="btn btn-primary btn-lg submit-btn" 
+            [disabled]="isSubmitting || isLoadingRoles"
+          >
+            <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status"></span>
+            <mat-icon *ngIf="!isSubmitting" class="btn-icon">how_to_reg</mat-icon>
+            {{ isSubmitting ? 'Assigning Role...' : 'Assign Role' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

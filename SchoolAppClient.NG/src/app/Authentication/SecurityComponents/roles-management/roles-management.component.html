@@ -1,0 +1,124 @@
+<div class="roles-container">
+  <div class="header-card">
+    <div class="header-content">
+      <div class="header-title">
+        <mat-icon class="header-icon">admin_panel_settings</mat-icon>
+        <div>
+          <h2>Role Management</h2>
+          <p class="subtitle">Create, view, update, and remove security roles across the system</p>
+        </div>
+      </div>
+      <button class="btn btn-primary create-btn" (click)="openCreateModal()">
+        <mat-icon>add</mat-icon> Add New Role
+      </button>
+    </div>
+  </div>
+
+  <!-- Banners for success/error feedback -->
+  <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
+    <mat-icon class="alert-icon">check_circle</mat-icon>
+    <span>{{ successMessage }}</span>
+    <button type="button" class="btn-close" (click)="clearMessages()"></button>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <mat-icon class="alert-icon">error</mat-icon>
+    <span>{{ errorMessage }}</span>
+    <button type="button" class="btn-close" (click)="clearMessages()"></button>
+  </div>
+
+  <!-- Search and Actions Bar -->
+  <div class="search-bar-card">
+    <div class="search-input-wrapper">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input 
+        type="text" 
+        class="form-control search-input" 
+        placeholder="Search roles by name or ID..." 
+        [(ngModel)]="searchQuery"
+        (input)="applyFilter()"
+      />
+    </div>
+    <div class="role-count">
+      Total Roles: <strong>{{ filteredRoles.length }}</strong>
+    </div>
+  </div>
+
+  <!-- Roles Table Card -->
+  <div class="table-card">
+    <div *ngIf="isLoading" class="loading-spinner-container">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p>Loading security roles...</p>
+    </div>
+
+    <div *ngIf="!isLoading && filteredRoles.length === 0" class="empty-state">
+      <mat-icon class="empty-icon">security</mat-icon>
+      <h4>No Roles Found</h4>
+      <p>Click "Add New Role" above to create your first security role.</p>
+    </div>
+
+    <table *ngIf="!isLoading && filteredRoles.length > 0" class="table custom-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Role ID</th>
+          <th>Role Name</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let role of filteredRoles; let i = index">
+          <td>{{ i + 1 }}</td>
+          <td><code class="role-id">{{ role.id }}</code></td>
+          <td>
+            <span class="badge role-badge">{{ role.name }}</span>
+          </td>
+          <td class="text-center actions-cell">
+            <button class="btn btn-sm btn-outline-primary action-btn me-2" (click)="openEditModal(role)" title="Edit Role">
+              <mat-icon class="btn-icon">edit</mat-icon> Edit
+            </button>
+            <button class="btn btn-sm btn-outline-danger action-btn" (click)="deleteRole(role)" title="Delete Role">
+              <mat-icon class="btn-icon">delete</mat-icon> Delete
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Dialog for Create / Edit Role -->
+<div class="modal-backdrop fade show" *ngIf="showModal" (click)="closeModal()"></div>
+<div class="modal fade show d-block" *ngIf="showModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <mat-icon class="modal-title-icon">{{ isEditMode ? 'edit' : 'add_circle' }}</mat-icon>
+          {{ isEditMode ? 'Edit Security Role' : 'Create New Security Role' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Role Name</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            placeholder="e.g. Admin, Teacher, Student, Accountant" 
+            [(ngModel)]="currentRole.name"
+            (keyup.enter)="saveRole()"
+          />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="saveRole()">
+          {{ isEditMode ? 'Save Changes' : 'Create Role' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

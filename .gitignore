@@ -84,3 +84,10 @@ SchoolApp.Models/obj/Release/net8.0/SchoolApp.Models.GlobalUsings.g.cs
 /SchoolApp.Models/obj/Debug/net8.0/SchoolApp.Models.dll
 /SchoolApp.Models/obj/Debug/net8.0/SchoolApp.Models.GeneratedMSBuildEditorConfig.editorconfig
 /SchoolApp.Models/obj/Debug/net8.0/SchoolApp.Models.pdb
+/.vs/SchoolManagementSystem/CopilotIndices/17.14.1661.41761/CodeChunks.db
+*.db-shm
+*.db-wal
+/.vs/SchoolManagementSystem/CopilotIndices/17.14.1661.41761/SemanticSymbols.db
+/.vs/SchoolManagementSystem/v17/DocumentLayout.json
+/SchoolApiService/obj/Debug/net8.0/EndpointInfo/SchoolApiService.json
+/SchoolApp.DAL/obj/Debug/net8.0/SchoolApp.DAL.csproj.CoreCompileInputs.cache

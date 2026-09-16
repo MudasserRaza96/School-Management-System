@@ -46,11 +46,37 @@ namespace SchoolApiService.Controllers
         [HttpPost("create-role")]
         public async Task<ActionResult> CreateRole([FromBody] UserRoleDto request)
         {
-            var (succeeded, errors) = await _userService.CreateRoleAsync(request);
+            var (succeeded, errors, role) = await _userService.CreateRoleAsync(request);
 
             if (succeeded)
             {
-                return Ok(request);
+                return Ok(role ?? request);
+            }
+
+            if (errors != null)
+            {
+                foreach (var error in errors)
+                {
+                    ModelState.AddModelError(error.Code, error.Description);
+                }
+            }
+
+            return BadRequest(ModelState);
+        }
+
+        [HttpPost("assign-role")]
+        public async Task<IActionResult> AssignRole([FromBody] AssignRoleDto request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var (succeeded, errors, message) = await _userService.AssignRoleAsync(request);
+
+            if (succeeded)
+            {
+                return Ok(new { message, username = request.Username, role = request.Role, roles = request.Roles });
             }
 
             if (errors != null)

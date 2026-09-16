@@ -1,0 +1,124 @@
+.assign-role-container {
+  padding: 32px 16px;
+  max-width: 650px;
+  margin: 0 auto;
+}
+
+.form-card {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.card-header {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  padding: 28px 32px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-bottom: none;
+}
+
+.header-icon-wrapper {
+  background: rgba(56, 189, 248, 0.15);
+  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-icon {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  color: #38bdf8;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.card-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.card-body {
+  padding: 32px;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 8px;
+}
+
+.label-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #0284c7;
+}
+
+.form-control, .form-select {
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  padding: 12px 16px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15);
+}
+
+.submit-btn {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-weight: 600;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  transition: all 0.2s ease;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
+}
+
+.btn-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+.alert-icon {
+  font-size: 20px;
+}

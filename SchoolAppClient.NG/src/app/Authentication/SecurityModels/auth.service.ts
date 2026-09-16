@@ -8,6 +8,7 @@ import { jwtDecode } from "jwt-decode";
 import { RegistrationRequest } from "./RegistrationRequest";
 
 const api: string = "https://localhost:7225/api/users/";
+const rolesApi: string = "https://localhost:7225/api/roles/";
 
 @Injectable({
   providedIn: 'root',
@@ -36,6 +37,30 @@ export class AuthService {
 
   register(user: RegistrationRequest): Observable<any> {
     return this.http.post(api + 'register', user);
+  }
+
+  assignRole(roleData: { username: string; role: string; roles?: string[] }): Observable<any> {
+    return this.http.post(api + 'assign-role', roleData);
+  }
+
+  getRoles(): Observable<any[]> {
+    return this.http.get<any[]>(rolesApi);
+  }
+
+  getRoleById(id: string): Observable<any> {
+    return this.http.get<any>(rolesApi + id);
+  }
+
+  createRole(role: { name: string }): Observable<any> {
+    return this.http.post<any>(rolesApi, role);
+  }
+
+  updateRole(id: string, role: { name: string }): Observable<any> {
+    return this.http.put<any>(rolesApi + id, role);
+  }
+
+  deleteRole(id: string): Observable<any> {
+    return this.http.delete<any>(rolesApi + id);
   }
 
 

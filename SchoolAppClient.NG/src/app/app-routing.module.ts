@@ -61,6 +61,8 @@ import { SubjectAddComponent } from './Components/subject/subject-add/subject-ad
 import { SubjectEditComponent } from './Components/subject/subject-edit/subject-edit.component';
 import { HomepageComponent } from './Components/homepage/homepage.component';
 import { RegistrationComponent } from './Authentication/SecurityComponents/registration/registration.component';
+import { RolesManagementComponent } from './Authentication/SecurityComponents/roles-management/roles-management.component';
+import { AssignRoleComponent } from './Authentication/SecurityComponents/assign-role/assign-role.component';
 
 
 const routes: Routes = [
@@ -179,6 +181,9 @@ const routes: Routes = [
 
 
   { path: 'home', component: HomepageComponent },
+
+  { path: 'roles', component: RolesManagementComponent },
+  { path: 'assign-role', component: AssignRoleComponent },
 
 
 ];
