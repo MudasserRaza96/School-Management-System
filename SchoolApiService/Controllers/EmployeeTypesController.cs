@@ -1,19 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.Models;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 
 namespace SchoolApiService.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize()]
     public class EmployeeTypesController : ControllerBase
     {
         private readonly SchoolDbContext _context;
@@ -23,86 +20,90 @@ namespace SchoolApiService.Controllers
             _context = context;
         }
 
-        
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<EmployeeType>>> GetdbsEmployeeType()
+        public async Task<ActionResult<ApiResponse<IEnumerable<EmployeeTypeDto>>>> GetEmployeeTypes()
         {
-            return await _context.dbsEmployeeType.ToListAsync();
+            var types = await _context.dbsEmployeeType.ToListAsync();
+            var dtos = types.Select(t => new EmployeeTypeDto
+            {
+                EmployeeTypeId = t.EmployeeTypeId,
+                EmployeeTypeName = t.EmployeeTypeName ?? string.Empty
+            });
+
+            return Ok(ApiResponse<IEnumerable<EmployeeTypeDto>>.SuccessResponse(dtos, "Employee types retrieved successfully."));
         }
 
-        
         [HttpGet("{id}")]
-        public async Task<ActionResult<EmployeeType>> GetEmployeeType(int id)
+        public async Task<ActionResult<ApiResponse<EmployeeTypeDto>>> GetEmployeeType(int id)
         {
-            var employeeType = await _context.dbsEmployeeType.FindAsync(id);
-
-            if (employeeType == null)
+            var type = await _context.dbsEmployeeType.FindAsync(id);
+            if (type == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<EmployeeTypeDto>.ErrorResponse($"No employee type found with ID {id}.", statusCode: 404));
             }
 
-            return employeeType;
+            var dto = new EmployeeTypeDto
+            {
+                EmployeeTypeId = type.EmployeeTypeId,
+                EmployeeTypeName = type.EmployeeTypeName ?? string.Empty
+            };
+
+            return Ok(ApiResponse<EmployeeTypeDto>.SuccessResponse(dto, "Employee type retrieved successfully."));
         }
 
-        
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutEmployeeType(int id, EmployeeType employeeType)
+        public async Task<ActionResult<ApiResponse<object>>> PutEmployeeType(int id, EmployeeTypeDto dto)
         {
-            if (id != employeeType.EmployeeTypeId)
+            if (id != dto.EmployeeTypeId)
             {
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload EmployeeTypeId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.EmployeeTypeId}'." }, 400));
             }
 
-            _context.Entry(employeeType).State = EntityState.Modified;
-
-            try
+            var entity = await _context.dbsEmployeeType.FindAsync(id);
+            if (entity == null)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!EmployeeTypeExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound(ApiResponse<object>.ErrorResponse($"No employee type found with ID {id} to update.", statusCode: 404));
             }
 
-            return NoContent();
+            entity.EmployeeTypeName = dto.EmployeeTypeName;
+            await _context.SaveChangesAsync();
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Employee type updated successfully."));
         }
 
-        
         [HttpPost]
-        public async Task<ActionResult<EmployeeType>> PostEmployeeType(EmployeeType employeeType)
+        public async Task<ActionResult<ApiResponse<EmployeeTypeDto>>> PostEmployeeType(EmployeeTypeDto dto)
         {
-            _context.dbsEmployeeType.Add(employeeType);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetEmployeeType", new { id = employeeType.EmployeeTypeId }, employeeType);
-        }
-
-        
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteEmployeeType(int id)
-        {
-            var employeeType = await _context.dbsEmployeeType.FindAsync(id);
-            if (employeeType == null)
+            if (string.IsNullOrWhiteSpace(dto.EmployeeTypeName))
             {
-                return NotFound();
+                return BadRequest(ApiResponse<EmployeeTypeDto>.ErrorResponse("Employee type creation failed.", new List<string> { "EmployeeTypeName is required." }, 400));
             }
 
-            _context.dbsEmployeeType.Remove(employeeType);
-            await _context.SaveChangesAsync();
+            var entity = new EmployeeType
+            {
+                EmployeeTypeName = dto.EmployeeTypeName
+            };
 
-            return NoContent();
+            _context.dbsEmployeeType.Add(entity);
+            await _context.SaveChangesAsync();
+            dto.EmployeeTypeId = entity.EmployeeTypeId;
+
+            return CreatedAtAction(nameof(GetEmployeeType), new { id = dto.EmployeeTypeId }, ApiResponse<EmployeeTypeDto>.SuccessResponse(dto, "Employee type created successfully.", 201));
         }
 
-        private bool EmployeeTypeExists(int id)
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteEmployeeType(int id)
         {
-            return _context.dbsEmployeeType.Any(e => e.EmployeeTypeId == id);
+            var entity = await _context.dbsEmployeeType.FindAsync(id);
+            if (entity == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No employee type found with ID {id} to delete.", statusCode: 404));
+            }
+
+            _context.dbsEmployeeType.Remove(entity);
+            await _context.SaveChangesAsync();
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Employee type deleted successfully."));
         }
     }
 }

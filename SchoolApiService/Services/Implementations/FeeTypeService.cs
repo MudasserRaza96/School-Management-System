@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
@@ -14,50 +15,58 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<FeeType>> GetAllAsync()
+        public async Task<IEnumerable<FeeTypeDto>> GetAllAsync()
         {
-            return await _context.dbsFeeType.ToListAsync();
+            var types = await _context.dbsFeeType.ToListAsync();
+            return types.Select(t => new FeeTypeDto
+            {
+                FeeTypeId = t.FeeTypeId,
+                FeeTypeName = t.TypeName ?? string.Empty
+            });
         }
 
-        public async Task<FeeType?> GetByIdAsync(int id)
+        public async Task<FeeTypeDto?> GetByIdAsync(int id)
         {
-            return await _context.dbsFeeType.FindAsync(id);
+            var t = await _context.dbsFeeType.FindAsync(id);
+            if (t == null) return null;
+
+            return new FeeTypeDto
+            {
+                FeeTypeId = t.FeeTypeId,
+                FeeTypeName = t.TypeName ?? string.Empty
+            };
         }
 
-        public async Task<FeeType> CreateAsync(FeeType feeType)
+        public async Task<FeeTypeDto> CreateAsync(FeeTypeDto dto)
         {
-            _context.dbsFeeType.Add(feeType);
+            var entity = new FeeType
+            {
+                TypeName = dto.FeeTypeName
+            };
+            _context.dbsFeeType.Add(entity);
             await _context.SaveChangesAsync();
-            return feeType;
+            dto.FeeTypeId = entity.FeeTypeId;
+            return dto;
         }
 
-        public async Task<bool> UpdateAsync(int id, FeeType feeType)
+        public async Task<bool> UpdateAsync(int id, FeeTypeDto dto)
         {
-            if (id != feeType.FeeTypeId) return false;
+            if (id != dto.FeeTypeId) return false;
 
-            _context.Entry(feeType).State = EntityState.Modified;
+            var entity = await _context.dbsFeeType.FindAsync(id);
+            if (entity == null) return false;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await ExistsAsync(id))
-                {
-                    return false;
-                }
-                throw;
-            }
+            entity.TypeName = dto.FeeTypeName;
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var feeType = await _context.dbsFeeType.FindAsync(id);
-            if (feeType == null) return false;
+            var type = await _context.dbsFeeType.FindAsync(id);
+            if (type == null) return false;
 
-            _context.dbsFeeType.Remove(feeType);
+            _context.dbsFeeType.Remove(type);
             await _context.SaveChangesAsync();
             return true;
         }

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 using SchoolApp.Models.DataModels;
 
@@ -18,86 +20,75 @@ namespace SchoolApiService.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<MarkEntry>>> GetdbsMarkEntry()
+        public async Task<ActionResult<ApiResponse<IEnumerable<MarkEntry>>>> GetMarkEntries()
         {
             var entries = await _markEntryService.GetAllMarkEntriesAsync();
-            return Ok(entries);
+            return Ok(ApiResponse<IEnumerable<MarkEntry>>.SuccessResponse(entries, "Mark entries retrieved successfully."));
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<MarkEntry>> GetMarkEntry(int id)
+        public async Task<ActionResult<ApiResponse<MarkEntry>>> GetMarkEntry(int id)
         {
             var markEntry = await _markEntryService.GetMarkEntryByIdAsync(id);
-
             if (markEntry == null)
             {
-                return NotFound("Sorry! No Mark is found. Try next time. Good luck.");
+                return NotFound(ApiResponse<MarkEntry>.ErrorResponse($"No mark entry found with ID {id}.", statusCode: 404));
             }
 
-            return markEntry;
+            return Ok(ApiResponse<MarkEntry>.SuccessResponse(markEntry, "Mark entry retrieved successfully."));
         }
 
         [HttpPost("GetStudents")]
-        public async Task<IActionResult> GetStudents([FromBody] MarkEntry markEntry)
+        public async Task<ActionResult<ApiResponse<object>>> GetStudents([FromBody] MarkEntry markEntry)
         {
             var details = await _markEntryService.PopulateStudentMarksDetailsAsync(markEntry);
-            return Ok(details);
+            return Ok(ApiResponse<object>.SuccessResponse(details, "Student marks details populated successfully."));
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateMarks([FromBody] MarkEntry markEntry)
+        public async Task<ActionResult<ApiResponse<MarkEntry>>> CreateMarks([FromBody] MarkEntry markEntry)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse<MarkEntry>.ErrorResponse("Validation failed.", new List<string> { "Provided MarkEntry model is invalid." }, 400));
             }
 
             var (succeeded, errorMessage, statusCode, createdEntry) = await _markEntryService.CreateMarkEntryAsync(markEntry);
-
             if (!succeeded || createdEntry == null)
             {
-                if (statusCode == 500)
-                {
-                    return StatusCode(500, errorMessage);
-                }
-                return BadRequest(errorMessage);
+                return StatusCode(statusCode, ApiResponse<MarkEntry>.ErrorResponse(errorMessage ?? "Failed to create mark entry.", statusCode: statusCode));
             }
 
-            return CreatedAtAction("GetMarkEntry", new { id = createdEntry.MarkEntryId }, createdEntry);
+            return Ok(ApiResponse<MarkEntry>.SuccessResponse(createdEntry, "Mark entry created successfully.", 201));
         }
 
-        [HttpPut]
-        public async Task<IActionResult> UpdateMarks([FromBody] MarkEntry markEntry)
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> UpdateMarks(int id, [FromBody] MarkEntry markEntry)
         {
-            if (!ModelState.IsValid)
+            if (id != markEntry.MarkEntryId)
             {
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload MarkEntryId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{markEntry.MarkEntryId}'." }, 400));
             }
 
             var (succeeded, errorMessage, updatedEntry) = await _markEntryService.UpdateMarkEntryAsync(markEntry);
-
-            if (!succeeded || updatedEntry == null)
+            if (!succeeded)
             {
-                if (errorMessage == "Mark entry not found.")
-                {
-                    return NotFound(errorMessage);
-                }
-                return BadRequest(errorMessage);
+                return BadRequest(ApiResponse<object>.ErrorResponse(errorMessage ?? "Failed to update mark entry.", statusCode: 400));
             }
 
-            return Ok(updatedEntry);
+            return Ok(ApiResponse<object>.SuccessResponse(updatedEntry!, "Mark entry updated successfully."));
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteMarkEntry(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteMarkEntry(int id)
         {
-            var deleted = await _markEntryService.DeleteMarkEntryAsync(id);
-            if (!deleted)
+            var succeeded = await _markEntryService.DeleteMarkEntryAsync(id);
+            if (!succeeded)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No mark entry found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Mark entry deleted successfully."));
         }
     }
 }

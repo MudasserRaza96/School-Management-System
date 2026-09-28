@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
@@ -14,42 +15,49 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<AcademicMonth>> GetAllAsync()
+        public async Task<IEnumerable<AcademicMonthDto>> GetAllAsync()
         {
-            return await _context.dbsAcademicMonths.ToListAsync();
+            var months = await _context.dbsAcademicMonths.ToListAsync();
+            return months.Select(m => new AcademicMonthDto
+            {
+                MonthId = m.MonthId,
+                MonthName = m.MonthName ?? string.Empty
+            });
         }
 
-        public async Task<AcademicMonth?> GetByIdAsync(int id)
+        public async Task<AcademicMonthDto?> GetByIdAsync(int id)
         {
-            return await _context.dbsAcademicMonths.FindAsync(id);
+            var m = await _context.dbsAcademicMonths.FindAsync(id);
+            if (m == null) return null;
+            return new AcademicMonthDto
+            {
+                MonthId = m.MonthId,
+                MonthName = m.MonthName ?? string.Empty
+            };
         }
 
-        public async Task<AcademicMonth> CreateAsync(AcademicMonth academicMonth)
+        public async Task<AcademicMonthDto> CreateAsync(AcademicMonthDto dto)
         {
-            _context.dbsAcademicMonths.Add(academicMonth);
+            var entity = new AcademicMonth
+            {
+                MonthName = dto.MonthName
+            };
+            _context.dbsAcademicMonths.Add(entity);
             await _context.SaveChangesAsync();
-            return academicMonth;
+            dto.MonthId = entity.MonthId;
+            return dto;
         }
 
-        public async Task<bool> UpdateAsync(int id, AcademicMonth academicMonth)
+        public async Task<bool> UpdateAsync(int id, AcademicMonthDto dto)
         {
-            if (id != academicMonth.MonthId) return false;
+            if (id != dto.MonthId) return false;
 
-            _context.Entry(academicMonth).State = EntityState.Modified;
+            var entity = await _context.dbsAcademicMonths.FindAsync(id);
+            if (entity == null) return false;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await ExistsAsync(id))
-                {
-                    return false;
-                }
-                throw;
-            }
+            entity.MonthName = dto.MonthName;
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<bool> DeleteAsync(int id)

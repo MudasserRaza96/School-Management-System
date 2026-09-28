@@ -18,6 +18,8 @@ namespace SchoolApiService.Services.Interfaces
         Task<(bool Succeeded, IEnumerable<IdentityError>? Errors, string? Message)> DeleteRoleAsync(string id);
 
         Task<(bool Succeeded, string? ErrorMessage, AuthResponse? Response)> AuthenticateAsync(AuthRequest request);
+        Task<(bool Succeeded, string? ErrorMessage, AuthResponse? Response)> RefreshTokenAsync(RefreshTokenRequest request);
+        Task<(bool Succeeded, string? Message)> RevokeTokenAsync(string username);
         Task<(bool Succeeded, IEnumerable<IdentityError>? Errors, string? Message)> AssignRoleAsync(AssignRoleDto request);
         Task<List<UserRoleAssignmentDto>> GetUserRolesAsync();
         Task<(bool Succeeded, IEnumerable<IdentityError>? Errors, string? Message)> UpdateUserRoleAsync(AssignRoleDto request);

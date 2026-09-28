@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using SchoolApiService.Services.Interfaces;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
 {
@@ -14,56 +15,80 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<StaffExperience>> GetAllStaffExperiencesAsync()
+        public async Task<IEnumerable<StaffExperienceDto>> GetAllStaffExperiencesAsync()
         {
-            return await _context.dbsStaffExperience.ToListAsync();
+            var exps = await _context.dbsStaffExperience.ToListAsync();
+            return exps.Select(e => new StaffExperienceDto
+            {
+                StaffExperienceId = e.StaffExperienceId,
+                CompanyName = e.CompanyName ?? string.Empty,
+                Designation = e.Designation ?? string.Empty,
+                JoiningDate = e.JoiningDate,
+                LeavingDate = e.LeavingDate,
+                Responsibilities = e.Responsibilities,
+                Achievements = e.Achievements
+            });
         }
 
-        public async Task<StaffExperience?> GetStaffExperienceByIdAsync(int id)
+        public async Task<StaffExperienceDto?> GetStaffExperienceByIdAsync(int id)
         {
-            return await _context.dbsStaffExperience.FindAsync(id);
+            var e = await _context.dbsStaffExperience.FindAsync(id);
+            if (e == null) return null;
+
+            return new StaffExperienceDto
+            {
+                StaffExperienceId = e.StaffExperienceId,
+                CompanyName = e.CompanyName ?? string.Empty,
+                Designation = e.Designation ?? string.Empty,
+                JoiningDate = e.JoiningDate,
+                LeavingDate = e.LeavingDate,
+                Responsibilities = e.Responsibilities,
+                Achievements = e.Achievements
+            };
         }
 
-        public async Task<StaffExperience> CreateStaffExperienceAsync(StaffExperience staffExperience)
+        public async Task<StaffExperienceDto> CreateStaffExperienceAsync(StaffExperienceDto dto)
         {
-            _context.dbsStaffExperience.Add(staffExperience);
+            var entity = new StaffExperience
+            {
+                CompanyName = dto.CompanyName,
+                Designation = dto.Designation,
+                JoiningDate = dto.JoiningDate,
+                LeavingDate = dto.LeavingDate,
+                Responsibilities = dto.Responsibilities,
+                Achievements = dto.Achievements
+            };
+
+            _context.dbsStaffExperience.Add(entity);
             await _context.SaveChangesAsync();
-            return staffExperience;
+            dto.StaffExperienceId = entity.StaffExperienceId;
+            return dto;
         }
 
-        public async Task<(bool Succeeded, bool ConcurrencyError)> UpdateStaffExperienceAsync(int id, StaffExperience staffExperience)
+        public async Task<bool> UpdateStaffExperienceAsync(int id, StaffExperienceDto dto)
         {
-            if (id != staffExperience.StaffExperienceId)
-            {
-                return (false, false);
-            }
+            if (id != dto.StaffExperienceId) return false;
 
-            _context.Entry(staffExperience).State = EntityState.Modified;
+            var entity = await _context.dbsStaffExperience.FindAsync(id);
+            if (entity == null) return false;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return (true, false);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await StaffExperienceExistsAsync(id))
-                {
-                    return (false, true);
-                }
-                throw;
-            }
+            entity.CompanyName = dto.CompanyName;
+            entity.Designation = dto.Designation;
+            entity.JoiningDate = dto.JoiningDate;
+            entity.LeavingDate = dto.LeavingDate;
+            entity.Responsibilities = dto.Responsibilities;
+            entity.Achievements = dto.Achievements;
+
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<bool> DeleteStaffExperienceAsync(int id)
         {
-            var staffExperience = await _context.dbsStaffExperience.FindAsync(id);
-            if (staffExperience == null)
-            {
-                return false;
-            }
+            var exp = await _context.dbsStaffExperience.FindAsync(id);
+            if (exp == null) return false;
 
-            _context.dbsStaffExperience.Remove(staffExperience);
+            _context.dbsStaffExperience.Remove(exp);
             await _context.SaveChangesAsync();
             return true;
         }

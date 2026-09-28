@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -18,105 +19,58 @@ namespace SchoolApiService.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetMonthlyPayments()
+        public async Task<ActionResult<ApiResponse<IEnumerable<MonthlyPaymentDto>>>> GetMonthlyPayments()
         {
-            try
-            {
-                var monthlyPayments = await _monthlyPaymentService.GetAllAsync();
-                return Ok(monthlyPayments);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception: {ex}");
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
-            }
+            var list = await _monthlyPaymentService.GetAllAsync();
+            return Ok(ApiResponse<IEnumerable<MonthlyPaymentDto>>.SuccessResponse(list, "Monthly payments retrieved successfully."));
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetMonthlyPaymentById(int id)
+        public async Task<ActionResult<ApiResponse<MonthlyPaymentDto>>> GetMonthlyPayment(int id)
         {
-            try
+            var p = await _monthlyPaymentService.GetByIdAsync(id);
+            if (p == null)
             {
-                var monthlyPayment = await _monthlyPaymentService.GetByIdAsync(id);
-
-                if (monthlyPayment == null)
-                {
-                    return NotFound($"monthlyPayment with ID {id} not found");
-                }
-
-                return Ok(monthlyPayment);
+                return NotFound(ApiResponse<MonthlyPaymentDto>.ErrorResponse($"No monthly payment found with ID {id}.", statusCode: 404));
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception: {ex}");
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
-            }
+
+            return Ok(ApiResponse<MonthlyPaymentDto>.SuccessResponse(p, "Monthly payment retrieved successfully."));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutMonthlyPayment(int id, [FromBody] MonthlyPayment updatedmonthlyPayment)
+        public async Task<ActionResult<ApiResponse<MonthlyPaymentDto>>> PutMonthlyPayment(int id, MonthlyPaymentDto dto)
         {
-            if (id != updatedmonthlyPayment.MonthlyPaymentId)
+            if (id != dto.MonthlyPaymentId)
             {
-                return BadRequest("ID Mismatch");
+                return BadRequest(ApiResponse<MonthlyPaymentDto>.ErrorResponse("URL ID and payload MonthlyPaymentId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.MonthlyPaymentId}'." }, 400));
             }
 
-            if (!ModelState.IsValid)
+            var updated = await _monthlyPaymentService.UpdateAsync(id, dto);
+            if (updated == null)
             {
-                return BadRequest(ModelState);
+                return NotFound(ApiResponse<MonthlyPaymentDto>.ErrorResponse($"No monthly payment found with ID {id} to update.", statusCode: 404));
             }
 
-            try
-            {
-                var updated = await _monthlyPaymentService.UpdateAsync(id, updatedmonthlyPayment);
-                if (updated == null)
-                {
-                    return NotFound($"Payment with ID {id} not found.");
-                }
-                return Ok(updated);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception: {ex}");
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
-            }
+            return Ok(ApiResponse<MonthlyPaymentDto>.SuccessResponse(updated, "Monthly payment updated successfully."));
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateMonthlyPayment([FromBody] MonthlyPayment monthlyPayment)
+        public async Task<ActionResult<ApiResponse<MonthlyPaymentDto>>> PostMonthlyPayment(MonthlyPaymentDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                var created = await _monthlyPaymentService.CreateAsync(monthlyPayment);
-                return Ok(created);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception: {ex}");
-                return StatusCode(500, "Internal Server Error: An error occurred while processing the request.");
-            }
+            var created = await _monthlyPaymentService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetMonthlyPayment), new { id = created.MonthlyPaymentId }, ApiResponse<MonthlyPaymentDto>.SuccessResponse(created, "Monthly payment created successfully.", 201));
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteMonthlyPayment(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteMonthlyPayment(int id)
         {
             var success = await _monthlyPaymentService.DeleteAsync(id);
-
             if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No monthly payment found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Monthly payment deleted successfully."));
         }
     }
 }

@@ -249,16 +249,96 @@ namespace SchoolApiService.Services.Implementations
             }
 
             var accessToken = _tokenService.CreateToken(userInDb);
-            await _context.SaveChangesAsync();
+            var refreshToken = _tokenService.GenerateRefreshToken();
+            var refreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+            userInDb.RefreshToken = refreshToken;
+            userInDb.RefreshTokenExpiryTime = refreshTokenExpiryTime;
+            await _userManager.UpdateAsync(userInDb);
+
+            var roles = await _userManager.GetRolesAsync(userInDb);
 
             var response = new AuthResponse
             {
                 Username = userInDb.UserName,
                 Email = userInDb.Email,
-                Token = accessToken
+                Token = accessToken,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiryTime = refreshTokenExpiryTime,
+                Roles = string.Join(",", roles)
             };
 
             return (true, null, response);
+        }
+
+        public async Task<(bool Succeeded, string? ErrorMessage, AuthResponse? Response)> RefreshTokenAsync(RefreshTokenRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.RefreshToken))
+            {
+                return (false, "Invalid client request.", null);
+            }
+
+            var principal = _tokenService.GetPrincipalFromExpiredToken(request.AccessToken);
+            ApplicationUser? user = null;
+
+            if (principal != null)
+            {
+                var username = principal.Identity?.Name 
+                    ?? principal.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                    ?? principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+
+                if (!string.IsNullOrEmpty(username))
+                {
+                    user = await _userManager.FindByNameAsync(username) ?? await _userManager.FindByEmailAsync(username);
+                }
+            }
+
+            if (user == null)
+            {
+                user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
+            }
+
+            if (user == null || user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                return (false, "Invalid or expired refresh token.", null);
+            }
+
+            var newAccessToken = _tokenService.CreateToken(user);
+            var newRefreshToken = _tokenService.GenerateRefreshToken();
+            var newExpiryTime = DateTime.UtcNow.AddDays(7);
+
+            user.RefreshToken = newRefreshToken;
+            user.RefreshTokenExpiryTime = newExpiryTime;
+            await _userManager.UpdateAsync(user);
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var response = new AuthResponse
+            {
+                Username = user.UserName,
+                Email = user.Email,
+                Token = newAccessToken,
+                RefreshToken = newRefreshToken,
+                RefreshTokenExpiryTime = newExpiryTime,
+                Roles = string.Join(",", roles)
+            };
+
+            return (true, null, response);
+        }
+
+        public async Task<(bool Succeeded, string? Message)> RevokeTokenAsync(string username)
+        {
+            var user = await _userManager.FindByNameAsync(username) ?? await _userManager.FindByEmailAsync(username);
+            if (user == null)
+            {
+                return (false, "User not found.");
+            }
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+            await _userManager.UpdateAsync(user);
+
+            return (true, "Token revoked successfully.");
         }
 
         public async Task<(bool Succeeded, IEnumerable<IdentityError>? Errors, string? Message)> AssignRoleAsync(AssignRoleDto request)

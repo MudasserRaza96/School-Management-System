@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
-using SchoolApp.Models.DataModels;
 
 namespace SchoolApiService.Controllers
 {
@@ -17,65 +18,64 @@ namespace SchoolApiService.Controllers
             _examTypeService = examTypeService;
         }
 
-        // GET: api/ExamTypes
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ExamType>>> GetdbsExamType()
+        public async Task<ActionResult<ApiResponse<IEnumerable<ExamTypeDto>>>> GetExamTypes()
         {
-            var examTypes = await _examTypeService.GetAllExamTypesAsync();
-            return Ok(examTypes);
+            var types = await _examTypeService.GetAllAsync();
+            return Ok(ApiResponse<IEnumerable<ExamTypeDto>>.SuccessResponse(types, "Exam types retrieved successfully."));
         }
 
-        // GET: api/ExamTypes/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<ExamType>> GetExamType(int id)
+        public async Task<ActionResult<ApiResponse<ExamTypeDto>>> GetExamType(int id)
         {
-            var examType = await _examTypeService.GetExamTypeByIdAsync(id);
-
-            if (examType == null)
+            var type = await _examTypeService.GetByIdAsync(id);
+            if (type == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<ExamTypeDto>.ErrorResponse($"No exam type found with ID {id}.", statusCode: 404));
             }
 
-            return examType;
+            return Ok(ApiResponse<ExamTypeDto>.SuccessResponse(type, "Exam type retrieved successfully."));
         }
 
-        // PUT: api/ExamTypes/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutExamType(int id, ExamType examType)
+        public async Task<ActionResult<ApiResponse<object>>> PutExamType(int id, ExamTypeDto dto)
         {
-            var (succeeded, concurrencyError) = await _examTypeService.UpdateExamTypeAsync(id, examType);
-
-            if (!succeeded)
+            if (id != dto.ExamTypeId)
             {
-                if (concurrencyError)
-                {
-                    return NotFound();
-                }
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload ExamTypeId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.ExamTypeId}'." }, 400));
             }
 
-            return NoContent();
+            var success = await _examTypeService.UpdateAsync(id, dto);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No exam type found with ID {id} to update.", statusCode: 404));
+            }
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Exam type updated successfully."));
         }
 
-        // POST: api/ExamTypes
         [HttpPost]
-        public async Task<ActionResult<ExamType>> PostExamType(ExamType examType)
+        public async Task<ActionResult<ApiResponse<ExamTypeDto>>> PostExamType(ExamTypeDto dto)
         {
-            var createdExamType = await _examTypeService.CreateExamTypeAsync(examType);
-            return CreatedAtAction("GetExamType", new { id = createdExamType.ExamTypeId }, createdExamType);
-        }
-
-        // DELETE: api/ExamTypes/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteExamType(int id)
-        {
-            var deleted = await _examTypeService.DeleteExamTypeAsync(id);
-            if (!deleted)
+            if (string.IsNullOrWhiteSpace(dto.ExamTypeName))
             {
-                return NotFound();
+                return BadRequest(ApiResponse<ExamTypeDto>.ErrorResponse("Exam type creation failed.", new List<string> { "ExamTypeName is required." }, 400));
             }
 
-            return NoContent();
+            var created = await _examTypeService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetExamType), new { id = created.ExamTypeId }, ApiResponse<ExamTypeDto>.SuccessResponse(created, "Exam type created successfully.", 201));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteExamType(int id)
+        {
+            var success = await _examTypeService.DeleteAsync(id);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No exam type found with ID {id} to delete.", statusCode: 404));
+            }
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Exam type deleted successfully."));
         }
     }
 }

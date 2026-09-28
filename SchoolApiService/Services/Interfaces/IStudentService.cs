@@ -1,13 +1,13 @@
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 
 namespace SchoolApiService.Services.Interfaces
 {
     public interface IStudentService
     {
-        Task<IEnumerable<Student>> GetAllStudentsAsync();
-        Task<Student?> GetStudentByIdAsync(int id);
-        Task<(bool Succeeded, string? ErrorMessage, bool ConcurrencyError)> UpdateStudentAsync(int id, Student student);
-        Task<(bool Succeeded, string? ErrorMessage, Student? CreatedStudent)> CreateStudentAsync(Student student);
+        Task<IEnumerable<StudentResponseDto>> GetAllStudentsAsync();
+        Task<StudentResponseDto?> GetStudentByIdAsync(int id);
+        Task<(bool Succeeded, string? ErrorMessage, StudentResponseDto? Student)> UpdateStudentAsync(int id, StudentUpdateDto dto);
+        Task<(bool Succeeded, string? ErrorMessage, StudentResponseDto? CreatedStudent)> CreateStudentAsync(StudentCreateDto dto);
         Task<bool> DeleteStudentAsync(int id);
         Task<bool> StudentExistsAsync(int id);
     }

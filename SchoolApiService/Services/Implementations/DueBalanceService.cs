@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
@@ -14,50 +15,66 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<DueBalance>> GetAllAsync()
+        public async Task<IEnumerable<DueBalanceDto>> GetAllAsync()
         {
-            return await _context.dbsDueBalance.ToListAsync();
+            var list = await _context.dbsDueBalance.Include(d => d.Student).ToListAsync();
+            return list.Select(d => new DueBalanceDto
+            {
+                DueBalanceId = d.DueBalanceId,
+                StudentId = d.StudentId ?? 0,
+                StudentName = d.Student?.StudentName,
+                DueAmount = d.DueBalanceAmount ?? 0
+            });
         }
 
-        public async Task<DueBalance?> GetByIdAsync(int id)
+        public async Task<DueBalanceDto?> GetByIdAsync(int id)
         {
-            return await _context.dbsDueBalance.FindAsync(id);
+            var d = await _context.dbsDueBalance.Include(d => d.Student).FirstOrDefaultAsync(d => d.DueBalanceId == id);
+            if (d == null) return null;
+
+            return new DueBalanceDto
+            {
+                DueBalanceId = d.DueBalanceId,
+                StudentId = d.StudentId ?? 0,
+                StudentName = d.Student?.StudentName,
+                DueAmount = d.DueBalanceAmount ?? 0
+            };
         }
 
-        public async Task<DueBalance> CreateAsync(DueBalance dueBalance)
+        public async Task<DueBalanceDto> CreateAsync(DueBalanceDto dto)
         {
-            _context.dbsDueBalance.Add(dueBalance);
+            var entity = new DueBalance
+            {
+                StudentId = dto.StudentId,
+                DueBalanceAmount = dto.DueAmount
+            };
+
+            _context.dbsDueBalance.Add(entity);
             await _context.SaveChangesAsync();
-            return dueBalance;
+            dto.DueBalanceId = entity.DueBalanceId;
+            return dto;
         }
 
-        public async Task<bool> UpdateAsync(int id, DueBalance dueBalance)
+        public async Task<bool> UpdateAsync(int id, DueBalanceDto dto)
         {
-            if (id != dueBalance.DueBalanceId) return false;
+            if (id != dto.DueBalanceId) return false;
 
-            _context.Entry(dueBalance).State = EntityState.Modified;
+            var entity = await _context.dbsDueBalance.FindAsync(id);
+            if (entity == null) return false;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await ExistsAsync(id))
-                {
-                    return false;
-                }
-                throw;
-            }
+            entity.StudentId = dto.StudentId;
+            entity.DueBalanceAmount = dto.DueAmount;
+
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var dueBalance = await _context.dbsDueBalance.FindAsync(id);
-            if (dueBalance == null) return false;
+            var d = await _context.dbsDueBalance.FindAsync(id);
+            if (d == null) return false;
 
-            _context.dbsDueBalance.Remove(dueBalance);
+            _context.dbsDueBalance.Remove(d);
             await _context.SaveChangesAsync();
             return true;
         }

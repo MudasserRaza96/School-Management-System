@@ -1,13 +1,13 @@
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 
 namespace SchoolApiService.Services.Interfaces
 {
     public interface IStaffSalaryService
     {
-        Task<IEnumerable<StaffSalary>> GetAllStaffSalariesAsync();
-        Task<StaffSalary?> GetStaffSalaryByIdAsync(int id);
-        Task<StaffSalary> CreateStaffSalaryAsync(StaffSalary staffSalary);
-        Task<(bool Succeeded, bool ConcurrencyError)> UpdateStaffSalaryAsync(int id, StaffSalary staffSalary);
+        Task<IEnumerable<StaffSalaryDto>> GetAllStaffSalariesAsync();
+        Task<StaffSalaryDto?> GetStaffSalaryByIdAsync(int id);
+        Task<StaffSalaryDto> CreateStaffSalaryAsync(StaffSalaryDto dto);
+        Task<bool> UpdateStaffSalaryAsync(int id, StaffSalaryDto dto);
         Task<bool> DeleteStaffSalaryAsync(int id);
         Task<bool> StaffSalaryExistsAsync(int id);
     }

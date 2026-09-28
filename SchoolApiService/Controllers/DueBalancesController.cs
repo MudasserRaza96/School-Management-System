@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -17,76 +18,59 @@ namespace SchoolApiService.Controllers
             _dueBalanceService = dueBalanceService;
         }
 
-        // GET: api/DueBalances
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<DueBalance>>> GetdbsDueBalance()
+        public async Task<ActionResult<ApiResponse<IEnumerable<DueBalanceDto>>>> GetDueBalances()
         {
-            var dueBalances = await _dueBalanceService.GetAllAsync();
-            return Ok(dueBalances);
+            var list = await _dueBalanceService.GetAllAsync();
+            return Ok(ApiResponse<IEnumerable<DueBalanceDto>>.SuccessResponse(list, "Due balances retrieved successfully."));
         }
 
-        // GET: api/DueBalances/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<DueBalance>> GetDueBalance(int id)
+        public async Task<ActionResult<ApiResponse<DueBalanceDto>>> GetDueBalance(int id)
         {
-            var dueBalance = await _dueBalanceService.GetByIdAsync(id);
-
-            if (dueBalance == null)
+            var d = await _dueBalanceService.GetByIdAsync(id);
+            if (d == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<DueBalanceDto>.ErrorResponse($"No due balance found with ID {id}.", statusCode: 404));
             }
 
-            return dueBalance;
+            return Ok(ApiResponse<DueBalanceDto>.SuccessResponse(d, "Due balance retrieved successfully."));
         }
 
-        // PUT: api/DueBalances/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutDueBalance(int id, DueBalance dueBalance)
+        public async Task<ActionResult<ApiResponse<object>>> PutDueBalance(int id, DueBalanceDto dto)
         {
-            if (id != dueBalance.DueBalanceId)
+            if (id != dto.DueBalanceId)
             {
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload DueBalanceId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.DueBalanceId}'." }, 400));
             }
 
-            try
+            var success = await _dueBalanceService.UpdateAsync(id, dto);
+            if (!success)
             {
-                var result = await _dueBalanceService.UpdateAsync(id, dueBalance);
-                if (!result)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception)
-            {
-                if (!await _dueBalanceService.ExistsAsync(id))
-                {
-                    return NotFound();
-                }
-                throw;
+                return NotFound(ApiResponse<object>.ErrorResponse($"No due balance found with ID {id} to update.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Due balance updated successfully."));
         }
 
-        // POST: api/DueBalances
         [HttpPost]
-        public async Task<ActionResult<DueBalance>> PostDueBalance(DueBalance dueBalance)
+        public async Task<ActionResult<ApiResponse<DueBalanceDto>>> PostDueBalance(DueBalanceDto dto)
         {
-            var created = await _dueBalanceService.CreateAsync(dueBalance);
-            return CreatedAtAction("GetDueBalance", new { id = created.DueBalanceId }, created);
+            var created = await _dueBalanceService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetDueBalance), new { id = created.DueBalanceId }, ApiResponse<DueBalanceDto>.SuccessResponse(created, "Due balance created successfully.", 201));
         }
 
-        // DELETE: api/DueBalances/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteDueBalance(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteDueBalance(int id)
         {
             var success = await _dueBalanceService.DeleteAsync(id);
             if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No due balance found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Due balance deleted successfully."));
         }
     }
 }

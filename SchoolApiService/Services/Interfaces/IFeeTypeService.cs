@@ -1,13 +1,13 @@
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 
 namespace SchoolApiService.Services.Interfaces
 {
     public interface IFeeTypeService
     {
-        Task<IEnumerable<FeeType>> GetAllAsync();
-        Task<FeeType?> GetByIdAsync(int id);
-        Task<FeeType> CreateAsync(FeeType feeType);
-        Task<bool> UpdateAsync(int id, FeeType feeType);
+        Task<IEnumerable<FeeTypeDto>> GetAllAsync();
+        Task<FeeTypeDto?> GetByIdAsync(int id);
+        Task<FeeTypeDto> CreateAsync(FeeTypeDto dto);
+        Task<bool> UpdateAsync(int id, FeeTypeDto dto);
         Task<bool> DeleteAsync(int id);
         Task<bool> ExistsAsync(int id);
     }

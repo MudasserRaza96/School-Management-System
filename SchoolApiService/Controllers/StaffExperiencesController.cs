@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
-using SchoolApp.Models.DataModels;
 
 namespace SchoolApiService.Controllers
 {
@@ -17,65 +18,64 @@ namespace SchoolApiService.Controllers
             _staffExperienceService = staffExperienceService;
         }
 
-        // GET: api/StaffExperiences
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<StaffExperience>>> GetdbsStaffExperience()
+        public async Task<ActionResult<ApiResponse<IEnumerable<StaffExperienceDto>>>> GetStaffExperiences()
         {
-            var experiences = await _staffExperienceService.GetAllStaffExperiencesAsync();
-            return Ok(experiences);
+            var exps = await _staffExperienceService.GetAllStaffExperiencesAsync();
+            return Ok(ApiResponse<IEnumerable<StaffExperienceDto>>.SuccessResponse(exps, "Staff experiences retrieved successfully."));
         }
 
-        // GET: api/StaffExperiences/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<StaffExperience>> GetStaffExperience(int id)
+        public async Task<ActionResult<ApiResponse<StaffExperienceDto>>> GetStaffExperience(int id)
         {
-            var staffExperience = await _staffExperienceService.GetStaffExperienceByIdAsync(id);
-
-            if (staffExperience == null)
+            var exp = await _staffExperienceService.GetStaffExperienceByIdAsync(id);
+            if (exp == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<StaffExperienceDto>.ErrorResponse($"No staff experience found with ID {id}.", statusCode: 404));
             }
 
-            return staffExperience;
+            return Ok(ApiResponse<StaffExperienceDto>.SuccessResponse(exp, "Staff experience retrieved successfully."));
         }
 
-        // PUT: api/StaffExperiences/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutStaffExperience(int id, StaffExperience staffExperience)
+        public async Task<ActionResult<ApiResponse<object>>> PutStaffExperience(int id, StaffExperienceDto dto)
         {
-            var (succeeded, concurrencyError) = await _staffExperienceService.UpdateStaffExperienceAsync(id, staffExperience);
-
-            if (!succeeded)
+            if (id != dto.StaffExperienceId)
             {
-                if (concurrencyError)
-                {
-                    return NotFound();
-                }
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload StaffExperienceId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.StaffExperienceId}'." }, 400));
             }
 
-            return NoContent();
+            var success = await _staffExperienceService.UpdateStaffExperienceAsync(id, dto);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No staff experience found with ID {id} to update.", statusCode: 404));
+            }
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Staff experience updated successfully."));
         }
 
-        // POST: api/StaffExperiences
         [HttpPost]
-        public async Task<ActionResult<StaffExperience>> PostStaffExperience(StaffExperience staffExperience)
+        public async Task<ActionResult<ApiResponse<StaffExperienceDto>>> PostStaffExperience(StaffExperienceDto dto)
         {
-            var createdExperience = await _staffExperienceService.CreateStaffExperienceAsync(staffExperience);
-            return CreatedAtAction("GetStaffExperience", new { id = createdExperience.StaffExperienceId }, createdExperience);
-        }
-
-        // DELETE: api/StaffExperiences/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteStaffExperience(int id)
-        {
-            var deleted = await _staffExperienceService.DeleteStaffExperienceAsync(id);
-            if (!deleted)
+            if (string.IsNullOrWhiteSpace(dto.CompanyName))
             {
-                return NotFound();
+                return BadRequest(ApiResponse<StaffExperienceDto>.ErrorResponse("Staff experience creation failed.", new List<string> { "CompanyName is required." }, 400));
             }
 
-            return NoContent();
+            var created = await _staffExperienceService.CreateStaffExperienceAsync(dto);
+            return CreatedAtAction(nameof(GetStaffExperience), new { id = created.StaffExperienceId }, ApiResponse<StaffExperienceDto>.SuccessResponse(created, "Staff experience created successfully.", 201));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteStaffExperience(int id)
+        {
+            var success = await _staffExperienceService.DeleteStaffExperienceAsync(id);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No staff experience found with ID {id} to delete.", statusCode: 404));
+            }
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Staff experience deleted successfully."));
         }
     }
 }

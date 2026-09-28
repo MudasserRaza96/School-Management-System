@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using SchoolApiService.Services.Interfaces;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
 {
@@ -14,118 +15,84 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<Mark>> GetAllMarksAsync()
+        public async Task<IEnumerable<MarkDto>> GetAllMarksAsync()
         {
-            return await _context.dbsMark
-                .Include(m => m.Staff)
-                .Include(m => m.Student)
-                .Include(m => m.Subject)
-                .ToListAsync();
+            var marks = await _context.dbsMark.Include(m => m.Student).ToListAsync();
+            return marks.Select(m => new MarkDto
+            {
+                MarkId = m.MarkId,
+                StudentId = m.StudentId,
+                StudentName = m.Student?.StudentName,
+                SubjectId = m.SubjectId,
+                ObtainedMarks = m.ObtainedScore,
+                Grade = m.Grade.ToString()
+            });
         }
 
-        public async Task<Mark?> GetMarkByIdAsync(int id)
+        public async Task<MarkDto?> GetMarkByIdAsync(int id)
         {
-            return await _context.dbsMark
-                .Include(m => m.Staff)
-                .Include(m => m.Student)
-                .Include(m => m.Subject)
-                .FirstOrDefaultAsync(m => m.MarkId == id);
+            var m = await _context.dbsMark.Include(m => m.Student).FirstOrDefaultAsync(m => m.MarkId == id);
+            if (m == null) return null;
+
+            return new MarkDto
+            {
+                MarkId = m.MarkId,
+                StudentId = m.StudentId,
+                StudentName = m.Student?.StudentName,
+                SubjectId = m.SubjectId,
+                ObtainedMarks = m.ObtainedScore,
+                Grade = m.Grade.ToString()
+            };
         }
 
-        public async Task<(bool Succeeded, string? ErrorMessage, object? Result)> CreateMarkAsync(Mark mark)
+        public async Task<(bool Succeeded, string? ErrorMessage, MarkDto? CreatedMark)> CreateMarkAsync(MarkDto dto)
         {
-            try
+            Grade gradeEnum = Grade.F;
+            if (!string.IsNullOrWhiteSpace(dto.Grade) && Enum.TryParse<Grade>(dto.Grade, true, out var g))
             {
-                var existingStaff = await _context.dbsStaff.FindAsync(mark.StaffId);
-                if (existingStaff == null)
-                {
-                    return (false, "Invalid / Not given StaffId. Please provide a valid StaffId.", null);
-                }
-
-                var existingStudent = await _context.dbsStudent.FindAsync(mark.StudentId);
-                if (existingStudent == null)
-                {
-                    return (false, "Invalid / Not given StudentId. Please provide a valid StudentId.", null);
-                }
-
-                var existingSubject = await _context.dbsSubject.FindAsync(mark.SubjectId);
-                if (existingSubject == null)
-                {
-                    return (false, "Invalid / Not given SubjectId. Please provide a valid SubjectId.", null);
-                }
-
-                _context.dbsMark.Add(mark);
-                await _context.SaveChangesAsync();
-
-                var result = new
-                {
-                    mark = mark,
-                    message = $"You have just inserted ID: {mark.MarkId}"
-                };
-
-                return (true, null, result);
+                gradeEnum = g;
             }
-            catch (Exception ex)
+
+            var entity = new Mark
             {
-                return (false, $"Ooops!!! Errrrrors!!: {ex.Message}", null);
-            }
+                StudentId = dto.StudentId,
+                SubjectId = dto.SubjectId,
+                ObtainedScore = (int)dto.ObtainedMarks,
+                Grade = gradeEnum
+            };
+
+            _context.dbsMark.Add(entity);
+            await _context.SaveChangesAsync();
+            dto.MarkId = entity.MarkId;
+            return (true, null, dto);
         }
 
-        public async Task<(bool Succeeded, string? ErrorMessage, bool ConcurrencyError)> UpdateMarkAsync(int id, Mark mark)
+        public async Task<(bool Succeeded, string? ErrorMessage, bool ConcurrencyError)> UpdateMarkAsync(int id, MarkDto dto)
         {
-            if (id != mark.MarkId)
+            if (id != dto.MarkId) return (false, "Invalid MarkId", false);
+
+            var entity = await _context.dbsMark.FindAsync(id);
+            if (entity == null) return (false, "Mark record not found.", true);
+
+            Grade gradeEnum = Grade.F;
+            if (!string.IsNullOrWhiteSpace(dto.Grade) && Enum.TryParse<Grade>(dto.Grade, true, out var g))
             {
-                return (false, "The ID in the request body does not match the ID in the route parameter.", false);
+                gradeEnum = g;
             }
 
-            if (mark.StaffId != null && !await _context.dbsStaff.AnyAsync(s => s.StaffId == mark.StaffId))
-            {
-                return (false, $"Invalid StaffId: {mark.StaffId}. The specified staff does not exist in the database.", false);
-            }
+            entity.StudentId = dto.StudentId;
+            entity.SubjectId = dto.SubjectId;
+            entity.ObtainedScore = (int)dto.ObtainedMarks;
+            entity.Grade = gradeEnum;
 
-            if (mark.StudentId != null && !await _context.dbsStudent.AnyAsync(s => s.StudentId == mark.StudentId))
-            {
-                return (false, $"Invalid StudentId: {mark.StudentId}. The specified student does not exist in the database.", false);
-            }
-
-            if (mark.SubjectId != null && !await _context.dbsSubject.AnyAsync(s => s.SubjectId == mark.SubjectId))
-            {
-                return (false, $"Invalid SubjectId: {mark.SubjectId}. The specified subject does not exist in the database.", false);
-            }
-
-            _context.Entry(mark).Property(p => p.TotalMarks).IsModified = mark.TotalMarks != null;
-            _context.Entry(mark).Property(p => p.PassMarks).IsModified = mark.PassMarks != null;
-            _context.Entry(mark).Property(p => p.ObtainedScore).IsModified = mark.ObtainedScore != null;
-            _context.Entry(mark).Property(p => p.Grade).IsModified = mark.Grade != null;
-            _context.Entry(mark).Property(p => p.PassStatus).IsModified = mark.PassStatus != null;
-            _context.Entry(mark).Property(p => p.MarkEntryDate).IsModified = mark.MarkEntryDate != null;
-            _context.Entry(mark).Property(p => p.Feedback).IsModified = mark.Feedback != null;
-            _context.Entry(mark).Property(p => p.StaffId).IsModified = mark.StaffId != null;
-            _context.Entry(mark).Property(p => p.StudentId).IsModified = mark.StudentId != null;
-            _context.Entry(mark).Property(p => p.SubjectId).IsModified = mark.SubjectId != null;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-                return (true, null, false);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await MarkExistsAsync(id))
-                {
-                    return (false, "Mark not found.", true);
-                }
-                throw;
-            }
+            await _context.SaveChangesAsync();
+            return (true, null, false);
         }
 
         public async Task<bool> DeleteMarkAsync(int id)
         {
             var mark = await _context.dbsMark.FindAsync(id);
-            if (mark == null)
-            {
-                return false;
-            }
+            if (mark == null) return false;
 
             _context.dbsMark.Remove(mark);
             await _context.SaveChangesAsync();

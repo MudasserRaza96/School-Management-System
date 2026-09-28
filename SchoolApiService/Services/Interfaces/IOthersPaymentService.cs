@@ -1,13 +1,13 @@
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 
 namespace SchoolApiService.Services.Interfaces
 {
     public interface IOthersPaymentService
     {
-        Task<IEnumerable<OthersPayment>> GetAllAsync();
-        Task<OthersPayment?> GetByIdAsync(int id);
-        Task<OthersPayment> CreateAsync(OthersPayment othersPayment);
-        Task<OthersPayment?> UpdateAsync(int id, OthersPayment updatedPayment);
+        Task<IEnumerable<OthersPaymentDto>> GetAllAsync();
+        Task<OthersPaymentDto?> GetByIdAsync(int id);
+        Task<OthersPaymentDto> CreateAsync(OthersPaymentDto dto);
+        Task<OthersPaymentDto?> UpdateAsync(int id, OthersPaymentDto dto);
         Task<bool> DeleteAsync(int id);
         Task<bool> ExistsAsync(int id);
     }

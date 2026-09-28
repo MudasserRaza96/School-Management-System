@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 using SchoolApiService.ViewModels;
 using SchoolApp.Models.DataModels;
@@ -18,73 +20,67 @@ namespace SchoolApiService.Controllers
             _examScheduleService = examScheduleService;
         }
 
-        // GET: api/ExamSchedules
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ExamScheduleVM>>> GetdbsExamSchedule()
+        public async Task<ActionResult<ApiResponse<IEnumerable<ExamScheduleVM>>>> GetExamSchedules()
         {
             var examSchedules = await _examScheduleService.GetAllExamSchedulesAsync();
-            return Ok(examSchedules);
+            return Ok(ApiResponse<IEnumerable<ExamScheduleVM>>.SuccessResponse(examSchedules, "Exam schedules retrieved successfully."));
         }
 
         public record GetExamScheduleOptionsResponse(int ExamScheduleId, string ExamScheduleName);
 
         [HttpGet("GetExamScheduleOptions")]
-        public async Task<IEnumerable<GetExamScheduleOptionsResponse>> GetExamScheduleOptions()
+        public async Task<ActionResult<ApiResponse<IEnumerable<GetExamScheduleOptionsResponse>>>> GetExamScheduleOptions()
         {
-            return await _examScheduleService.GetExamScheduleOptionsAsync();
+            var options = await _examScheduleService.GetExamScheduleOptionsAsync();
+            return Ok(ApiResponse<IEnumerable<GetExamScheduleOptionsResponse>>.SuccessResponse(options, "Exam schedule options retrieved successfully."));
         }
 
-        // GET: api/ExamSchedules/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<ExamScheduleVM>> GetExamSchedule(int id)
+        public async Task<ActionResult<ApiResponse<ExamScheduleVM>>> GetExamSchedule(int id)
         {
             var examSchedule = await _examScheduleService.GetExamScheduleByIdAsync(id);
-
             if (examSchedule == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<ExamScheduleVM>.ErrorResponse($"No exam schedule found with ID {id}.", statusCode: 404));
             }
 
-            return examSchedule;
+            return Ok(ApiResponse<ExamScheduleVM>.SuccessResponse(examSchedule, "Exam schedule retrieved successfully."));
         }
 
-        // PUT: api/ExamSchedules/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutExamSchedule(int id, ExamSchedule examSchedule)
+        public async Task<ActionResult<ApiResponse<object>>> PutExamSchedule(int id, ExamSchedule examSchedule)
         {
             var (succeeded, concurrencyError) = await _examScheduleService.UpdateExamScheduleAsync(id, examSchedule);
-
             if (!succeeded)
             {
                 if (concurrencyError)
                 {
-                    return NotFound();
+                    return NotFound(ApiResponse<object>.ErrorResponse($"No exam schedule found with ID {id} to update.", statusCode: 404));
                 }
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload ExamScheduleId mismatch.", statusCode: 400));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Exam schedule updated successfully."));
         }
 
-        // POST: api/ExamSchedules
         [HttpPost]
-        public async Task<ActionResult<ExamSchedule>> PostExamSchedule(ExamSchedule examSchedule)
+        public async Task<ActionResult<ApiResponse<ExamSchedule>>> PostExamSchedule(ExamSchedule examSchedule)
         {
             var createdSchedule = await _examScheduleService.CreateExamScheduleAsync(examSchedule);
-            return CreatedAtAction("GetExamSchedule", new { id = createdSchedule.ExamScheduleId }, createdSchedule);
+            return CreatedAtAction(nameof(GetExamSchedule), new { id = createdSchedule.ExamScheduleId }, ApiResponse<ExamSchedule>.SuccessResponse(createdSchedule, "Exam schedule created successfully.", 201));
         }
 
-        // DELETE: api/ExamSchedules/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteExamSchedule(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteExamSchedule(int id)
         {
             var deleted = await _examScheduleService.DeleteExamScheduleAsync(id);
             if (!deleted)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No exam schedule found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Exam schedule deleted successfully."));
         }
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -17,76 +18,64 @@ namespace SchoolApiService.Controllers
             _departmentService = departmentService;
         }
 
-        // GET: api/Departments
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Department>>> GetdbsDepartment()
+        public async Task<ActionResult<ApiResponse<IEnumerable<DepartmentDto>>>> GetDepartments()
         {
-            var departments = await _departmentService.GetAllAsync();
-            return Ok(departments);
+            var depts = await _departmentService.GetAllAsync();
+            return Ok(ApiResponse<IEnumerable<DepartmentDto>>.SuccessResponse(depts, "Departments retrieved successfully."));
         }
 
-        // GET: api/Departments/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Department>> GetDepartment(int id)
+        public async Task<ActionResult<ApiResponse<DepartmentDto>>> GetDepartment(int id)
         {
-            var department = await _departmentService.GetByIdAsync(id);
-
-            if (department == null)
+            var dept = await _departmentService.GetByIdAsync(id);
+            if (dept == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<DepartmentDto>.ErrorResponse($"No department found with ID {id}.", statusCode: 404));
             }
 
-            return department;
+            return Ok(ApiResponse<DepartmentDto>.SuccessResponse(dept, "Department retrieved successfully."));
         }
 
-        // PUT: api/Departments/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutDepartment(int id, Department department)
+        public async Task<ActionResult<ApiResponse<object>>> PutDepartment(int id, DepartmentDto dto)
         {
-            if (id != department.DepartmentId)
+            if (id != dto.DepartmentId)
             {
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload DepartmentId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.DepartmentId}'." }, 400));
             }
 
-            try
+            var success = await _departmentService.UpdateAsync(id, dto);
+            if (!success)
             {
-                var result = await _departmentService.UpdateAsync(id, department);
-                if (!result)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception)
-            {
-                if (!await _departmentService.ExistsAsync(id))
-                {
-                    return NotFound();
-                }
-                throw;
+                return NotFound(ApiResponse<object>.ErrorResponse($"No department found with ID {id} to update.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Department updated successfully."));
         }
 
-        // POST: api/Departments
         [HttpPost]
-        public async Task<ActionResult<Department>> PostDepartment(Department department)
+        public async Task<ActionResult<ApiResponse<DepartmentDto>>> PostDepartment(DepartmentDto dto)
         {
-            var created = await _departmentService.CreateAsync(department);
-            return CreatedAtAction("GetDepartment", new { id = created.DepartmentId }, created);
+            if (string.IsNullOrWhiteSpace(dto.DepartmentName))
+            {
+                return BadRequest(ApiResponse<DepartmentDto>.ErrorResponse("Department creation failed.", new List<string> { "DepartmentName is required." }, 400));
+            }
+
+            var created = await _departmentService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetDepartment), new { id = created.DepartmentId }, ApiResponse<DepartmentDto>.SuccessResponse(created, "Department created successfully.", 201));
         }
 
-        // DELETE: api/Departments/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteDepartment(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteDepartment(int id)
         {
             var success = await _departmentService.DeleteAsync(id);
             if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No department found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Department deleted successfully."));
         }
     }
 }

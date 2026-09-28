@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
-using SchoolApp.Models.DataModels;
 
 namespace SchoolApiService.Controllers
 {
@@ -17,71 +18,69 @@ namespace SchoolApiService.Controllers
             _studentService = studentService;
         }
 
-        // GET: api/Students
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
+        public async Task<ActionResult<ApiResponse<IEnumerable<StudentResponseDto>>>> GetStudents()
         {
             var students = await _studentService.GetAllStudentsAsync();
-            return Ok(students);
+            return Ok(ApiResponse<IEnumerable<StudentResponseDto>>.SuccessResponse(students, "Students retrieved successfully."));
         }
 
-        // GET: api/Students/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Student>> GetStudent(int id)
+        public async Task<ActionResult<ApiResponse<StudentResponseDto>>> GetStudent(int id)
         {
             var student = await _studentService.GetStudentByIdAsync(id);
-
             if (student == null)
             {
-                return NotFound("Sorry! No Student is found. Try next time. Good luck.");
+                return NotFound(ApiResponse<StudentResponseDto>.ErrorResponse($"No student was found with ID {id}.", statusCode: 404));
             }
 
-            return student;
+            return Ok(ApiResponse<StudentResponseDto>.SuccessResponse(student, "Student retrieved successfully."));
         }
 
-        // PUT: api/Students/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutStudent(int id, Student student)
+        public async Task<ActionResult<ApiResponse<StudentResponseDto>>> PutStudent(int id, StudentUpdateDto dto)
         {
-            var (succeeded, errorMessage, concurrencyError) = await _studentService.UpdateStudentAsync(id, student);
+            if (id != dto.StudentId)
+            {
+                return BadRequest(ApiResponse<StudentResponseDto>.ErrorResponse("Student update failed.", new List<string> { $"Provided URL ID '{id}' does not match payload StudentId '{dto.StudentId}'." }, 400));
+            }
 
+            var (succeeded, errorMessage, updatedStudent) = await _studentService.UpdateStudentAsync(id, dto);
             if (!succeeded)
             {
-                if (concurrencyError)
-                {
-                    return NotFound();
-                }
-                return BadRequest(errorMessage);
+                return BadRequest(ApiResponse<StudentResponseDto>.ErrorResponse("Student update failed.", new List<string> { errorMessage ?? "Failed to update student." }, 400));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<StudentResponseDto>.SuccessResponse(updatedStudent!, "Student updated successfully."));
         }
 
-        // POST: api/Students
         [HttpPost]
-        public async Task<ActionResult<Student>> PostStudent(Student student)
+        public async Task<ActionResult<ApiResponse<StudentResponseDto>>> PostStudent(StudentCreateDto dto)
         {
-            var (succeeded, errorMessage, createdStudent) = await _studentService.CreateStudentAsync(student);
+            if (string.IsNullOrWhiteSpace(dto.StudentName))
+            {
+                return BadRequest(ApiResponse<StudentResponseDto>.ErrorResponse("Student creation failed.", new List<string> { "Student name is required." }, 400));
+            }
 
+            var (succeeded, errorMessage, createdStudent) = await _studentService.CreateStudentAsync(dto);
             if (!succeeded || createdStudent == null)
             {
-                return BadRequest(errorMessage);
+                return BadRequest(ApiResponse<StudentResponseDto>.ErrorResponse("Student creation failed.", new List<string> { errorMessage ?? "Failed to create student." }, 400));
             }
 
-            return CreatedAtAction(nameof(GetStudent), new { id = createdStudent.StudentId }, createdStudent);
+            return CreatedAtAction(nameof(GetStudent), new { id = createdStudent.StudentId }, ApiResponse<StudentResponseDto>.SuccessResponse(createdStudent, "Student created successfully.", 201));
         }
 
-        // DELETE: api/Students/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteStudent(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteStudent(int id)
         {
-            var deleted = await _studentService.DeleteStudentAsync(id);
-            if (!deleted)
+            var success = await _studentService.DeleteStudentAsync(id);
+            if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No student was found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Student deleted successfully."));
         }
     }
 }

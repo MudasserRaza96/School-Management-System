@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 using SchoolApiService.ViewModels;
 using SchoolApp.Models.DataModels;
@@ -18,86 +20,71 @@ namespace SchoolApiService.Controllers
             _attendanceService = attendanceService;
         }
 
-        // GET: api/Attendances
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Attendance>>> GetdbsAttendance()
+        public async Task<ActionResult<ApiResponse<IEnumerable<AttendanceDto>>>> GetAttendances()
         {
             var attendances = await _attendanceService.GetAllAttendancesAsync();
-            return Ok(attendances);
+            return Ok(ApiResponse<IEnumerable<AttendanceDto>>.SuccessResponse(attendances, "Attendances retrieved successfully."));
         }
 
-        // GET: api/Attendances/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Attendance>> GetAttendance(int id)
+        public async Task<ActionResult<ApiResponse<AttendanceDto>>> GetAttendance(int id)
         {
             var attendance = await _attendanceService.GetAttendanceByIdAsync(id);
-
             if (attendance == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<AttendanceDto>.ErrorResponse($"No attendance record found with ID {id}.", statusCode: 404));
             }
 
-            return attendance;
+            return Ok(ApiResponse<AttendanceDto>.SuccessResponse(attendance, "Attendance record retrieved successfully."));
         }
 
-        [HttpGet("GetList/{Type}")]
-        public async Task<ActionResult> GetList(AttendanceType Type)
+        [HttpGet("Type/{type}")]
+        public async Task<ActionResult<ApiResponse<IEnumerable<AttList>>>> GetAttendanceListByType(AttendanceType type)
         {
-            var data = await _attendanceService.GetAttendanceListByTypeAsync(Type);
-            return Ok(data);
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> PostAttendance([FromBody] Attendance attendance)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var (succeeded, errorMessage, createdAttendance) = await _attendanceService.CreateAttendanceAsync(attendance);
-
-            if (!succeeded || createdAttendance == null)
-            {
-                return BadRequest(errorMessage);
-            }
-
-            return CreatedAtAction("GetAttendance", new { id = createdAttendance.AttendanceId }, createdAttendance);
+            var list = await _attendanceService.GetAttendanceListByTypeAsync(type);
+            return Ok(ApiResponse<IEnumerable<AttList>>.SuccessResponse(list, "Attendance list retrieved successfully."));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateAttendance(int id, [FromBody] Attendance attendance)
+        public async Task<ActionResult<ApiResponse<object>>> PutAttendance(int id, AttendanceDto dto)
         {
-            if (!ModelState.IsValid)
+            if (id != dto.AttendanceId)
             {
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload AttendanceId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.AttendanceId}'." }, 400));
             }
 
-            var (succeeded, errorMessage, concurrencyError) = await _attendanceService.UpdateAttendanceAsync(id, attendance);
-
+            var (succeeded, errorMessage, _) = await _attendanceService.UpdateAttendanceAsync(id, dto);
             if (!succeeded)
             {
-                if (concurrencyError)
-                {
-                    return NotFound();
-                }
-                return BadRequest(errorMessage);
+                return BadRequest(ApiResponse<object>.ErrorResponse("Attendance update failed.", new List<string> { errorMessage ?? "Failed to update attendance." }, 400));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Attendance record updated successfully."));
         }
 
-        // DELETE: api/Attendances/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAttendance(int id)
+        [HttpPost]
+        public async Task<ActionResult<ApiResponse<AttendanceDto>>> PostAttendance(AttendanceDto dto)
         {
-            var deleted = await _attendanceService.DeleteAttendanceAsync(id);
-            if (!deleted)
+            var (succeeded, errorMessage, createdAttendance) = await _attendanceService.CreateAttendanceAsync(dto);
+            if (!succeeded || createdAttendance == null)
             {
-                return NotFound();
+                return BadRequest(ApiResponse<AttendanceDto>.ErrorResponse("Attendance creation failed.", new List<string> { errorMessage ?? "Failed to create attendance." }, 400));
             }
 
-            return NoContent();
+            return CreatedAtAction(nameof(GetAttendance), new { id = createdAttendance.AttendanceId }, ApiResponse<AttendanceDto>.SuccessResponse(createdAttendance, "Attendance record created successfully.", 201));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteAttendance(int id)
+        {
+            var success = await _attendanceService.DeleteAttendanceAsync(id);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No attendance record found with ID {id} to delete.", statusCode: 404));
+            }
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Attendance record deleted successfully."));
         }
     }
 }

@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using SchoolApp.Models.DataModels.SecurityModels;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace SchoolApiService.Services
@@ -19,28 +20,57 @@ namespace SchoolApiService.Services
 
         public string CreateToken(ApplicationUser user)
         {
-
             var token = CreateJwtToken(user);
-
-            //var payload = new JObject()
-            //{
-            //    { JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()},
-            //    { JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()},
-            //    { JwtRegisteredClaimNames.Exp, expiration.ToUnixTimeSeconds().ToString()},
-            //    { JwtRegisteredClaimNames.Email, user.Email },
-            //    { JwtRegisteredClaimNames.GivenName,user.UserName},
-            //    { JwtRegisteredClaimNames.Name,user.UserName},
-            //    { ClaimTypes.NameIdentifier, user.Id },
-            //    { ClaimTypes.Role, user.Role.ToString() }
-            //}.ToString();
-
-            //var tokenHandler = new JsonWebTokenHandler();
-            //var signingCredentials = CreateSigningCredentials();
-            //var jwt = tokenHandler.CreateToken(payload);
             var tokenHandler = new JwtSecurityTokenHandler();
             _logger.LogInformation("JWT Token created");
 
             return tokenHandler.WriteToken(token);
+        }
+
+        public string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[64];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
+
+        public ClaimsPrincipal? GetPrincipalFromExpiredToken(string? token)
+        {
+            if (string.IsNullOrEmpty(token)) return null;
+
+            var symmetricSecurityKey = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build().GetSection("JwtTokenSettings")["SymmetricSecurityKey"];
+            var validIssuer = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build().GetSection("JwtTokenSettings")["ValidIssuer"];
+            var validAudience = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build().GetSection("JwtTokenSettings")["ValidAudience"];
+
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = true,
+                ValidAudience = validAudience,
+                ValidateIssuer = true,
+                ValidIssuer = validIssuer,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(symmetricSecurityKey!)),
+                ValidateLifetime = false
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            try
+            {
+                var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+
+                if (securityToken is not JwtSecurityToken jwtSecurityToken ||
+                    !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return null;
+                }
+
+                return principal;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private JwtSecurityToken CreateJwtToken(ApplicationUser user)

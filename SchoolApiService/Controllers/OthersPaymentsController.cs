@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -18,104 +19,58 @@ namespace SchoolApiService.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetothersPayments()
+        public async Task<ActionResult<ApiResponse<IEnumerable<OthersPaymentDto>>>> GetOthersPayments()
         {
-            try
-            {
-                var othersPayments = await _othersPaymentService.GetAllAsync();
-                return Ok(othersPayments);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception: {ex}");
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
-            }
+            var list = await _othersPaymentService.GetAllAsync();
+            return Ok(ApiResponse<IEnumerable<OthersPaymentDto>>.SuccessResponse(list, "Other payments retrieved successfully."));
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetOthersPaymentById(int id)
+        public async Task<ActionResult<ApiResponse<OthersPaymentDto>>> GetOthersPayment(int id)
         {
-            try
+            var p = await _othersPaymentService.GetByIdAsync(id);
+            if (p == null)
             {
-                var monthlyPayment = await _othersPaymentService.GetByIdAsync(id);
-
-                if (monthlyPayment == null)
-                {
-                    return NotFound($"monthlyPayment with ID {id} not found");
-                }
-
-                return Ok(monthlyPayment);
+                return NotFound(ApiResponse<OthersPaymentDto>.ErrorResponse($"No other payment record found with ID {id}.", statusCode: 404));
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception: {ex}");
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
-            }
+
+            return Ok(ApiResponse<OthersPaymentDto>.SuccessResponse(p, "Other payment record retrieved successfully."));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateOthersPayment(int id, [FromBody] OthersPayment updatedPayment)
+        public async Task<ActionResult<ApiResponse<OthersPaymentDto>>> PutOthersPayment(int id, OthersPaymentDto dto)
         {
-            if (id != updatedPayment.OthersPaymentId)
+            if (id != dto.OthersPaymentId)
             {
-                return BadRequest("Invalid ID");
+                return BadRequest(ApiResponse<OthersPaymentDto>.ErrorResponse("URL ID and payload OthersPaymentId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.OthersPaymentId}'." }, 400));
             }
 
-            if (!ModelState.IsValid)
+            var updated = await _othersPaymentService.UpdateAsync(id, dto);
+            if (updated == null)
             {
-                return BadRequest(ModelState);
+                return NotFound(ApiResponse<OthersPaymentDto>.ErrorResponse($"No other payment record found with ID {id} to update.", statusCode: 404));
             }
 
-            try
-            {
-                var result = await _othersPaymentService.UpdateAsync(id, updatedPayment);
-                if (result == null)
-                {
-                    return NotFound($"Payment with ID {id} not found.");
-                }
-                return Ok(result);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception: {ex}");
-                return StatusCode(500, "Internal Server Error: An error occurred while processing the request.");
-            }
+            return Ok(ApiResponse<OthersPaymentDto>.SuccessResponse(updated, "Other payment record updated successfully."));
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateOthersPayment([FromBody] OthersPayment othersPayment)
+        public async Task<ActionResult<ApiResponse<OthersPaymentDto>>> PostOthersPayment(OthersPaymentDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                var created = await _othersPaymentService.CreateAsync(othersPayment);
-                return Ok(created);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception: {ex}");
-                return StatusCode(500, "Internal Server Error: An error occurred while processing the request.");
-            }
+            var created = await _othersPaymentService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetOthersPayment), new { id = created.OthersPaymentId }, ApiResponse<OthersPaymentDto>.SuccessResponse(created, "Other payment record created successfully.", 201));
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteOthersPayment(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteOthersPayment(int id)
         {
             var success = await _othersPaymentService.DeleteAsync(id);
             if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No other payment record found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Other payment record deleted successfully."));
         }
     }
 }

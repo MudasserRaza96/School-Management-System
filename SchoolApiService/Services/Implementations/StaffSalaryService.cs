@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using SchoolApiService.Services.Interfaces;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
 {
@@ -14,56 +15,68 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<StaffSalary>> GetAllStaffSalariesAsync()
+        public async Task<IEnumerable<StaffSalaryDto>> GetAllStaffSalariesAsync()
         {
-            return await _context.dbsStaffSalary.ToListAsync();
+            var salaries = await _context.dbsStaffSalary.ToListAsync();
+            return salaries.Select(s => new StaffSalaryDto
+            {
+                StaffSalaryId = s.StaffSalaryId,
+                StaffName = s.StaffName ?? string.Empty,
+                BasicSalary = s.BasicSalary ?? 0,
+                NetSalary = s.NetSalary ?? 0
+            });
         }
 
-        public async Task<StaffSalary?> GetStaffSalaryByIdAsync(int id)
+        public async Task<StaffSalaryDto?> GetStaffSalaryByIdAsync(int id)
         {
-            return await _context.dbsStaffSalary.FindAsync(id);
+            var s = await _context.dbsStaffSalary.FindAsync(id);
+            if (s == null) return null;
+
+            return new StaffSalaryDto
+            {
+                StaffSalaryId = s.StaffSalaryId,
+                StaffName = s.StaffName ?? string.Empty,
+                BasicSalary = s.BasicSalary ?? 0,
+                NetSalary = s.NetSalary ?? 0
+            };
         }
 
-        public async Task<StaffSalary> CreateStaffSalaryAsync(StaffSalary staffSalary)
+        public async Task<StaffSalaryDto> CreateStaffSalaryAsync(StaffSalaryDto dto)
         {
-            _context.dbsStaffSalary.Add(staffSalary);
+            var entity = new StaffSalary
+            {
+                StaffName = dto.StaffName,
+                BasicSalary = dto.BasicSalary,
+                NetSalary = dto.NetSalary
+            };
+
+            _context.dbsStaffSalary.Add(entity);
             await _context.SaveChangesAsync();
-            return staffSalary;
+            dto.StaffSalaryId = entity.StaffSalaryId;
+            return dto;
         }
 
-        public async Task<(bool Succeeded, bool ConcurrencyError)> UpdateStaffSalaryAsync(int id, StaffSalary staffSalary)
+        public async Task<bool> UpdateStaffSalaryAsync(int id, StaffSalaryDto dto)
         {
-            if (id != staffSalary.StaffSalaryId)
-            {
-                return (false, false);
-            }
+            if (id != dto.StaffSalaryId) return false;
 
-            _context.Entry(staffSalary).State = EntityState.Modified;
+            var entity = await _context.dbsStaffSalary.FindAsync(id);
+            if (entity == null) return false;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return (true, false);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await StaffSalaryExistsAsync(id))
-                {
-                    return (false, true);
-                }
-                throw;
-            }
+            entity.StaffName = dto.StaffName;
+            entity.BasicSalary = dto.BasicSalary;
+            entity.NetSalary = dto.NetSalary;
+
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<bool> DeleteStaffSalaryAsync(int id)
         {
-            var staffSalary = await _context.dbsStaffSalary.FindAsync(id);
-            if (staffSalary == null)
-            {
-                return false;
-            }
+            var sal = await _context.dbsStaffSalary.FindAsync(id);
+            if (sal == null) return false;
 
-            _context.dbsStaffSalary.Remove(staffSalary);
+            _context.dbsStaffSalary.Remove(sal);
             await _context.SaveChangesAsync();
             return true;
         }

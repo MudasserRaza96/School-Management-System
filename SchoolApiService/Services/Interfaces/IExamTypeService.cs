@@ -1,14 +1,14 @@
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 
 namespace SchoolApiService.Services.Interfaces
 {
     public interface IExamTypeService
     {
-        Task<IEnumerable<ExamType>> GetAllExamTypesAsync();
-        Task<ExamType?> GetExamTypeByIdAsync(int id);
-        Task<ExamType> CreateExamTypeAsync(ExamType examType);
-        Task<(bool Succeeded, bool ConcurrencyError)> UpdateExamTypeAsync(int id, ExamType examType);
-        Task<bool> DeleteExamTypeAsync(int id);
-        Task<bool> ExamTypeExistsAsync(int id);
+        Task<IEnumerable<ExamTypeDto>> GetAllAsync();
+        Task<ExamTypeDto?> GetByIdAsync(int id);
+        Task<ExamTypeDto> CreateAsync(ExamTypeDto dto);
+        Task<bool> UpdateAsync(int id, ExamTypeDto dto);
+        Task<bool> DeleteAsync(int id);
+        Task<bool> ExistsAsync(int id);
     }
 }

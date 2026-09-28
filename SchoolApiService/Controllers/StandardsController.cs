@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -17,80 +18,64 @@ namespace SchoolApiService.Controllers
             _standardService = standardService;
         }
 
-        // GET: api/Standards
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Standard>>> GetdbsStandard()
+        public async Task<ActionResult<ApiResponse<IEnumerable<StandardDto>>>> GetStandards()
         {
-            var standards = await _standardService.GetAllAsync();
-            return Ok(standards);
+            var stds = await _standardService.GetAllAsync();
+            return Ok(ApiResponse<IEnumerable<StandardDto>>.SuccessResponse(stds, "Standards retrieved successfully."));
         }
 
-        // GET: api/Standards/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Standard>> GetStandard(int id)
+        public async Task<ActionResult<ApiResponse<StandardDto>>> GetStandard(int id)
         {
-            var standard = await _standardService.GetByIdAsync(id);
-
-            if (standard == null)
+            var std = await _standardService.GetByIdAsync(id);
+            if (std == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<StandardDto>.ErrorResponse($"No standard found with ID {id}.", statusCode: 404));
             }
 
-            return standard;
+            return Ok(ApiResponse<StandardDto>.SuccessResponse(std, "Standard retrieved successfully."));
         }
 
-        // PUT: api/Standards/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutStandard(int id, Standard standard)
+        public async Task<ActionResult<ApiResponse<object>>> PutStandard(int id, StandardDto dto)
         {
-            if (id != standard.StandardId)
+            if (id != dto.StandardId)
             {
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload StandardId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.StandardId}'." }, 400));
             }
 
-            try
-            {
-                var result = await _standardService.UpdateAsync(id, standard);
-                if (!result)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception)
-            {
-                if (!await _standardService.ExistsAsync(id))
-                {
-                    return NotFound();
-                }
-                throw;
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/Standards
-        [HttpPost]
-        public async Task<ActionResult<Standard>> PostStandard(Standard standard)
-        {
-            var created = await _standardService.CreateAsync(standard);
-            return CreatedAtAction("GetStandard", new { id = created.StandardId }, created);
-        }
-
-        // DELETE: api/Standards/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteStandard(int id)
-        {
-            var (success, errorMessage) = await _standardService.DeleteAsync(id);
+            var success = await _standardService.UpdateAsync(id, dto);
             if (!success)
             {
-                if (errorMessage != null)
-                {
-                    return BadRequest(errorMessage);
-                }
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No standard found with ID {id} to update.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Standard updated successfully."));
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<ApiResponse<StandardDto>>> PostStandard(StandardDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.StandardName))
+            {
+                return BadRequest(ApiResponse<StandardDto>.ErrorResponse("Standard creation failed.", new List<string> { "StandardName is required." }, 400));
+            }
+
+            var created = await _standardService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetStandard), new { id = created.StandardId }, ApiResponse<StandardDto>.SuccessResponse(created, "Standard created successfully.", 201));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteStandard(int id)
+        {
+            var success = await _standardService.DeleteAsync(id);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No standard found with ID {id} to delete.", statusCode: 404));
+            }
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Standard deleted successfully."));
         }
     }
 }

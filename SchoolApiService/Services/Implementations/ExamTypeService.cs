@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using SchoolApiService.Services.Interfaces;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
 {
@@ -14,61 +15,63 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<ExamType>> GetAllExamTypesAsync()
+        public async Task<IEnumerable<ExamTypeDto>> GetAllAsync()
         {
-            return await _context.dbsExamType.ToListAsync();
+            var types = await _context.dbsExamType.ToListAsync();
+            return types.Select(t => new ExamTypeDto
+            {
+                ExamTypeId = t.ExamTypeId,
+                ExamTypeName = t.ExamTypeName ?? string.Empty
+            });
         }
 
-        public async Task<ExamType?> GetExamTypeByIdAsync(int id)
+        public async Task<ExamTypeDto?> GetByIdAsync(int id)
         {
-            return await _context.dbsExamType.FindAsync(id);
+            var t = await _context.dbsExamType.FindAsync(id);
+            if (t == null) return null;
+
+            return new ExamTypeDto
+            {
+                ExamTypeId = t.ExamTypeId,
+                ExamTypeName = t.ExamTypeName ?? string.Empty
+            };
         }
 
-        public async Task<ExamType> CreateExamTypeAsync(ExamType examType)
+        public async Task<ExamTypeDto> CreateAsync(ExamTypeDto dto)
         {
-            _context.dbsExamType.Add(examType);
+            var entity = new ExamType
+            {
+                ExamTypeName = dto.ExamTypeName
+            };
+            _context.dbsExamType.Add(entity);
             await _context.SaveChangesAsync();
-            return examType;
+            dto.ExamTypeId = entity.ExamTypeId;
+            return dto;
         }
 
-        public async Task<(bool Succeeded, bool ConcurrencyError)> UpdateExamTypeAsync(int id, ExamType examType)
+        public async Task<bool> UpdateAsync(int id, ExamTypeDto dto)
         {
-            if (id != examType.ExamTypeId)
-            {
-                return (false, false);
-            }
+            if (id != dto.ExamTypeId) return false;
 
-            _context.Entry(examType).State = EntityState.Modified;
+            var entity = await _context.dbsExamType.FindAsync(id);
+            if (entity == null) return false;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return (true, false);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await ExamTypeExistsAsync(id))
-                {
-                    return (false, true);
-                }
-                throw;
-            }
-        }
-
-        public async Task<bool> DeleteExamTypeAsync(int id)
-        {
-            var examType = await _context.dbsExamType.FindAsync(id);
-            if (examType == null)
-            {
-                return false;
-            }
-
-            _context.dbsExamType.Remove(examType);
+            entity.ExamTypeName = dto.ExamTypeName;
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> ExamTypeExistsAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var type = await _context.dbsExamType.FindAsync(id);
+            if (type == null) return false;
+
+            _context.dbsExamType.Remove(type);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ExistsAsync(int id)
         {
             return await _context.dbsExamType.AnyAsync(e => e.ExamTypeId == id);
         }

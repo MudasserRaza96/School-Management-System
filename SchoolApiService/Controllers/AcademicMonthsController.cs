@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -17,76 +18,64 @@ namespace SchoolApiService.Controllers
             _academicMonthService = academicMonthService;
         }
 
-        // GET: api/AcademicMonths
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<AcademicMonth>>> GetdbsAcademicMonths()
+        public async Task<ActionResult<ApiResponse<IEnumerable<AcademicMonthDto>>>> GetAcademicMonths()
         {
             var months = await _academicMonthService.GetAllAsync();
-            return Ok(months);
+            return Ok(ApiResponse<IEnumerable<AcademicMonthDto>>.SuccessResponse(months, "Academic months retrieved successfully."));
         }
 
-        // GET: api/AcademicMonths/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<AcademicMonth>> GetAcademicMonth(int id)
+        public async Task<ActionResult<ApiResponse<AcademicMonthDto>>> GetAcademicMonth(int id)
         {
             var academicMonth = await _academicMonthService.GetByIdAsync(id);
-
             if (academicMonth == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<AcademicMonthDto>.ErrorResponse($"No academic month found with ID {id}.", statusCode: 404));
             }
 
-            return academicMonth;
+            return Ok(ApiResponse<AcademicMonthDto>.SuccessResponse(academicMonth, "Academic month retrieved successfully."));
         }
 
-        // PUT: api/AcademicMonths/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutAcademicMonth(int id, AcademicMonth academicMonth)
+        public async Task<ActionResult<ApiResponse<object>>> PutAcademicMonth(int id, AcademicMonthDto dto)
         {
-            if (id != academicMonth.MonthId)
+            if (id != dto.MonthId)
             {
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload MonthId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.MonthId}'." }, 400));
             }
 
-            try
+            var success = await _academicMonthService.UpdateAsync(id, dto);
+            if (!success)
             {
-                var result = await _academicMonthService.UpdateAsync(id, academicMonth);
-                if (!result)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception)
-            {
-                if (!await _academicMonthService.ExistsAsync(id))
-                {
-                    return NotFound();
-                }
-                throw;
+                return NotFound(ApiResponse<object>.ErrorResponse($"No academic month found with ID {id} to update.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Academic month updated successfully."));
         }
 
-        // POST: api/AcademicMonths
         [HttpPost]
-        public async Task<ActionResult<AcademicMonth>> PostAcademicMonth(AcademicMonth academicMonth)
+        public async Task<ActionResult<ApiResponse<AcademicMonthDto>>> PostAcademicMonth(AcademicMonthDto dto)
         {
-            var created = await _academicMonthService.CreateAsync(academicMonth);
-            return CreatedAtAction("GetAcademicMonth", new { id = created.MonthId }, created);
+            if (string.IsNullOrWhiteSpace(dto.MonthName))
+            {
+                return BadRequest(ApiResponse<AcademicMonthDto>.ErrorResponse("Academic month creation failed.", new List<string> { "MonthName is required." }, 400));
+            }
+
+            var created = await _academicMonthService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetAcademicMonth), new { id = created.MonthId }, ApiResponse<AcademicMonthDto>.SuccessResponse(created, "Academic month created successfully.", 201));
         }
 
-        // DELETE: api/AcademicMonths/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAcademicMonth(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteAcademicMonth(int id)
         {
             var success = await _academicMonthService.DeleteAsync(id);
             if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No academic month found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Academic month deleted successfully."));
         }
     }
 }

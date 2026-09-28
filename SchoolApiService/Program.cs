@@ -7,12 +7,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SchoolApiService.Middleware;
+using SchoolApiService.Models;
 using SchoolApiService.Services;
 using SchoolApiService.Services.Interfaces;
 using SchoolApiService.Services.Implementations;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels.SecurityModels;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace SchoolApiService
@@ -141,6 +144,25 @@ namespace SchoolApiService
                     ),
                     SaveSigninToken = true
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnChallenge = async context =>
+                    {
+                        context.HandleResponse();
+                        context.Response.StatusCode = 401;
+                        context.Response.ContentType = "application/json";
+                        var response = ApiResponse<object>.ErrorResponse(
+                            "Unauthorized access.",
+                            new List<string> { "A valid JWT authentication token is required to access this resource." },
+                            401
+                        );
+                        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
+                        {
+                            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                        });
+                        await context.Response.WriteAsync(json);
+                    }
+                };
             });
 
             FastReport.Utils.RegisteredObjects.AddConnection(typeof(MsSqlDataConnection));
@@ -148,6 +170,8 @@ namespace SchoolApiService
             builder.Services.AddFastReport();
 
             var app = builder.Build();
+
+            app.UseMiddleware<ExceptionHandlingMiddleware>();
 
             if (app.Environment.IsDevelopment())
             {

@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
-using SchoolApp.Models.DataModels;
 
 namespace SchoolApiService.Controllers
 {
@@ -17,65 +18,59 @@ namespace SchoolApiService.Controllers
             _staffSalaryService = staffSalaryService;
         }
 
-        // GET: api/StaffSalaries
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<StaffSalary>>> GetdbsStaffSalary()
+        public async Task<ActionResult<ApiResponse<IEnumerable<StaffSalaryDto>>>> GetStaffSalaries()
         {
             var salaries = await _staffSalaryService.GetAllStaffSalariesAsync();
-            return Ok(salaries);
+            return Ok(ApiResponse<IEnumerable<StaffSalaryDto>>.SuccessResponse(salaries, "Staff salaries retrieved successfully."));
         }
 
-        // GET: api/StaffSalaries/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<StaffSalary>> GetStaffSalary(int id)
+        public async Task<ActionResult<ApiResponse<StaffSalaryDto>>> GetStaffSalary(int id)
         {
-            var staffSalary = await _staffSalaryService.GetStaffSalaryByIdAsync(id);
-
-            if (staffSalary == null)
+            var salary = await _staffSalaryService.GetStaffSalaryByIdAsync(id);
+            if (salary == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<StaffSalaryDto>.ErrorResponse($"No staff salary found with ID {id}.", statusCode: 404));
             }
 
-            return staffSalary;
+            return Ok(ApiResponse<StaffSalaryDto>.SuccessResponse(salary, "Staff salary retrieved successfully."));
         }
 
-        // PUT: api/StaffSalaries/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutStaffSalary(int id, StaffSalary staffSalary)
+        public async Task<ActionResult<ApiResponse<object>>> PutStaffSalary(int id, StaffSalaryDto dto)
         {
-            var (succeeded, concurrencyError) = await _staffSalaryService.UpdateStaffSalaryAsync(id, staffSalary);
-
-            if (!succeeded)
+            if (id != dto.StaffSalaryId)
             {
-                if (concurrencyError)
-                {
-                    return NotFound();
-                }
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload StaffSalaryId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.StaffSalaryId}'." }, 400));
             }
 
-            return NoContent();
+            var success = await _staffSalaryService.UpdateStaffSalaryAsync(id, dto);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No staff salary found with ID {id} to update.", statusCode: 404));
+            }
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Staff salary updated successfully."));
         }
 
-        // POST: api/StaffSalaries
         [HttpPost]
-        public async Task<ActionResult<StaffSalary>> PostStaffSalary(StaffSalary staffSalary)
+        public async Task<ActionResult<ApiResponse<StaffSalaryDto>>> PostStaffSalary(StaffSalaryDto dto)
         {
-            var createdSalary = await _staffSalaryService.CreateStaffSalaryAsync(staffSalary);
-            return CreatedAtAction("GetStaffSalary", new { id = createdSalary.StaffSalaryId }, createdSalary);
+            var created = await _staffSalaryService.CreateStaffSalaryAsync(dto);
+            return CreatedAtAction(nameof(GetStaffSalary), new { id = created.StaffSalaryId }, ApiResponse<StaffSalaryDto>.SuccessResponse(created, "Staff salary created successfully.", 201));
         }
 
-        // DELETE: api/StaffSalaries/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteStaffSalary(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteStaffSalary(int id)
         {
-            var deleted = await _staffSalaryService.DeleteStaffSalaryAsync(id);
-            if (!deleted)
+            var success = await _staffSalaryService.DeleteStaffSalaryAsync(id);
+            if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No staff salary found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Staff salary deleted successfully."));
         }
     }
 }

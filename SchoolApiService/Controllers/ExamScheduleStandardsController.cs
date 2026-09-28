@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 using SchoolApiService.ViewModels;
 
@@ -17,75 +19,63 @@ namespace SchoolApiService.Controllers
             _examScheduleStandardService = examScheduleStandardService;
         }
 
-        // GET: api/ExamScheduleStandards
         [HttpGet]
-        public async Task<IEnumerable<ExamScheduleStandardVM>> GetdbsExamScheduleStandard()
+        public async Task<ActionResult<ApiResponse<IEnumerable<ExamScheduleStandardVM>>>> GetExamScheduleStandards()
         {
-            return await _examScheduleStandardService.GetAllExamScheduleStandardsAsync();
+            var data = await _examScheduleStandardService.GetAllExamScheduleStandardsAsync();
+            return Ok(ApiResponse<IEnumerable<ExamScheduleStandardVM>>.SuccessResponse(data, "Exam schedule standards retrieved successfully."));
         }
 
-        // GET: api/ExamScheduleStandards/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<ExamScheduleStandardVM>> GetExamScheduleStandard(int id)
+        public async Task<ActionResult<ApiResponse<ExamScheduleStandardVM>>> GetExamScheduleStandard(int id)
         {
-            var examScheduleStandard = await _examScheduleStandardService.GetExamScheduleStandardByIdAsync(id);
-
-            if (examScheduleStandard == null)
+            var data = await _examScheduleStandardService.GetExamScheduleStandardByIdAsync(id);
+            if (data == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<ExamScheduleStandardVM>.ErrorResponse($"No exam schedule standard found with ID {id}.", statusCode: 404));
             }
 
-            return examScheduleStandard;
+            return Ok(ApiResponse<ExamScheduleStandardVM>.SuccessResponse(data, "Exam schedule standard retrieved successfully."));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutExamScheduleStandard(int id, UpdateExamScheduleStandardVM request)
+        public async Task<ActionResult<ApiResponse<object>>> PutExamScheduleStandard(int id, UpdateExamScheduleStandardVM request)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             var (succeeded, errorMessage) = await _examScheduleStandardService.UpdateExamScheduleStandardAsync(id, request);
-
             if (!succeeded)
             {
                 if (errorMessage == "Exam schedule standard Id not found.")
                 {
-                    return NotFound(errorMessage);
+                    return NotFound(ApiResponse<object>.ErrorResponse($"No exam schedule standard found with ID {id} to update.", statusCode: 404));
                 }
-                return BadRequest(errorMessage);
+                return BadRequest(ApiResponse<object>.ErrorResponse(errorMessage ?? "Update failed.", statusCode: 400));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Exam schedule standard updated successfully."));
         }
 
-        // POST: api/ExamScheduleStandards
         [HttpPost]
-        public async Task<IActionResult> PostExamScheduleStandard(CreateExamScheduleStandardVM request)
+        public async Task<ActionResult<ApiResponse<object>>> PostExamScheduleStandard(CreateExamScheduleStandardVM request)
         {
             var (succeeded, errorMessage) = await _examScheduleStandardService.CreateExamScheduleStandardAsync(request);
-
             if (!succeeded)
             {
-                throw new Exception(errorMessage ?? "Error creating exam schedule standard.");
+                return BadRequest(ApiResponse<object>.ErrorResponse(errorMessage ?? "Creation failed.", statusCode: 400));
             }
 
-            return Ok();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Exam schedule standard created successfully.", 201));
         }
 
-        // DELETE: api/ExamScheduleStandards/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteExamScheduleStandard(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteExamScheduleStandard(int id)
         {
-            var deleted = await _examScheduleStandardService.DeleteExamScheduleStandardAsync(id);
-
-            if (!deleted)
+            var succeeded = await _examScheduleStandardService.DeleteExamScheduleStandardAsync(id);
+            if (!succeeded)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No exam schedule standard found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Exam schedule standard deleted successfully."));
         }
     }
 }

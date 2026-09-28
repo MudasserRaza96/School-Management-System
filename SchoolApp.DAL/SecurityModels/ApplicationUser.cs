@@ -10,6 +10,8 @@ namespace SchoolApp.Models.DataModels.SecurityModels
     public class ApplicationUser : IdentityUser
     {
         public IList<string> Role { get; set; } = [];
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiryTime { get; set; }
     }
 
     public class UserRoleDto

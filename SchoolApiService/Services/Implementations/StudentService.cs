@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using SchoolApiService.Services.Interfaces;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
 {
@@ -14,89 +15,155 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<Student>> GetAllStudentsAsync()
+        public async Task<IEnumerable<StudentResponseDto>> GetAllStudentsAsync()
         {
-            return await _context.dbsStudent
+            var students = await _context.dbsStudent
                 .Include(s => s.Standard)
                 .ToListAsync();
+
+            return students.Select(MapToResponseDto);
         }
 
-        public async Task<Student?> GetStudentByIdAsync(int id)
+        public async Task<StudentResponseDto?> GetStudentByIdAsync(int id)
         {
-            return await _context.dbsStudent
+            var student = await _context.dbsStudent
                 .Include(s => s.Standard)
                 .FirstOrDefaultAsync(s => s.StudentId == id);
+
+            return student == null ? null : MapToResponseDto(student);
         }
 
-        public async Task<(bool Succeeded, string? ErrorMessage, bool ConcurrencyError)> UpdateStudentAsync(int id, Student student)
+        public async Task<(bool Succeeded, string? ErrorMessage, StudentResponseDto? Student)> UpdateStudentAsync(int id, StudentUpdateDto dto)
         {
-            if (id != student.StudentId)
+            if (id != dto.StudentId)
             {
-                return (false, "Invalid StudentId", false);
+                return (false, $"Provided ID '{id}' does not match StudentId '{dto.StudentId}'.", null);
             }
 
-            if (student.StandardId != null)
+            var entity = await _context.dbsStudent
+                .Include(s => s.Standard)
+                .FirstOrDefaultAsync(s => s.StudentId == id);
+
+            if (entity == null)
             {
-                student.Standard = await _context.dbsStandard.FindAsync(student.StandardId);
-                if (student.Standard == null)
+                return (false, $"No student found with ID {id}.", null);
+            }
+
+            if (dto.StandardId > 0)
+            {
+                var standard = await _context.dbsStandard.FindAsync(dto.StandardId);
+                if (standard == null)
                 {
-                    return (false, "Invalid StandardId", false);
+                    return (false, $"Standard with ID {dto.StandardId} does not exist.", null);
                 }
+                entity.StandardId = dto.StandardId;
+                entity.Standard = standard;
             }
 
-            _context.Entry(student).State = EntityState.Modified;
+            GenderList? genderEnum = null;
+            if (!string.IsNullOrWhiteSpace(dto.StudentGender) && Enum.TryParse<GenderList>(dto.StudentGender, true, out var parsedGender))
+            {
+                genderEnum = parsedGender;
+            }
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return (true, null, false);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await StudentExistsAsync(id))
-                {
-                    return (false, null, true);
-                }
-                throw;
-            }
+            entity.AdmissionNo = dto.AdmissionNo;
+            entity.EnrollmentNo = dto.EnrollmentNo;
+            entity.UniqueStudentAttendanceNumber = dto.UniqueStudentAttendanceNumber;
+            entity.StudentName = dto.StudentName;
+            entity.StudentDOB = dto.StudentDOB;
+            entity.StudentGender = genderEnum;
+            entity.StudentReligion = dto.StudentReligion;
+            entity.StudentBloodGroup = dto.StudentBloodGroup;
+            entity.StudentNationality = dto.StudentNationality;
+            entity.StudentNIDNumber = dto.StudentNIDNumber;
+            entity.StudentContactNumber1 = dto.StudentContactNumber1;
+            entity.StudentContactNumber2 = dto.StudentContactNumber2;
+            entity.StudentEmail = dto.StudentEmail;
+            entity.ImagePath = dto.ImagePath;
+            entity.FatherName = dto.FatherName;
+            entity.FatherNID = dto.FatherNID;
+            entity.FatherContactNumber = dto.FatherContactNumber;
+            entity.MotherName = dto.MotherName;
+            entity.MotherNID = dto.MotherNID;
+            entity.MotherContactNumber = dto.MotherContactNumber;
+            entity.LocalGuardianName = dto.LocalGuardianName;
+            entity.LocalGuardianContactNumber = dto.LocalGuardianContactNumber;
+            entity.TemporaryAddress = dto.TemporaryAddress;
+            entity.PermanentAddress = dto.PermanentAddress;
+
+            await _context.SaveChangesAsync();
+            return (true, null, MapToResponseDto(entity));
         }
 
-        public async Task<(bool Succeeded, string? ErrorMessage, Student? CreatedStudent)> CreateStudentAsync(Student student)
+        public async Task<(bool Succeeded, string? ErrorMessage, StudentResponseDto? CreatedStudent)> CreateStudentAsync(StudentCreateDto dto)
         {
-            if (student.StandardId != null)
+            if (dto.StandardId > 0)
             {
-                student.Standard = await _context.dbsStandard.FindAsync(student.StandardId);
-                if (student.Standard == null)
+                var standard = await _context.dbsStandard.FindAsync(dto.StandardId);
+                if (standard == null)
                 {
-                    return (false, "Invalid StandardId", null);
+                    return (false, $"Standard with ID {dto.StandardId} does not exist.", null);
                 }
             }
 
-            if (student.ImageUpload?.ImageData != null)
+            if (!string.IsNullOrWhiteSpace(dto.StudentEmail))
             {
-                student.ImagePath = student.ImageUpload.ImageData;
+                var emailExists = await _context.dbsStudent.AnyAsync(s => s.StudentEmail == dto.StudentEmail);
+                if (emailExists)
+                {
+                    return (false, $"A student with email '{dto.StudentEmail}' already exists.", null);
+                }
             }
 
-            _context.dbsStudent.Add(student);
+            GenderList? genderEnum = null;
+            if (!string.IsNullOrWhiteSpace(dto.StudentGender) && Enum.TryParse<GenderList>(dto.StudentGender, true, out var parsedGender))
+            {
+                genderEnum = parsedGender;
+            }
 
-            try
+            var entity = new Student
             {
-                await _context.SaveChangesAsync();
-                return (true, null, student);
-            }
-            catch (DbUpdateException)
-            {
-                return (false, "Unable to save changes. Please try again.", null);
-            }
+                AdmissionNo = dto.AdmissionNo,
+                EnrollmentNo = dto.EnrollmentNo,
+                UniqueStudentAttendanceNumber = dto.UniqueStudentAttendanceNumber,
+                StudentName = dto.StudentName,
+                StudentDOB = dto.StudentDOB,
+                StudentGender = genderEnum,
+                StudentReligion = dto.StudentReligion,
+                StudentBloodGroup = dto.StudentBloodGroup,
+                StudentNationality = dto.StudentNationality,
+                StudentNIDNumber = dto.StudentNIDNumber,
+                StudentContactNumber1 = dto.StudentContactNumber1,
+                StudentContactNumber2 = dto.StudentContactNumber2,
+                StudentEmail = dto.StudentEmail,
+                StandardId = dto.StandardId,
+                ImagePath = dto.ImagePath,
+                FatherName = dto.FatherName,
+                FatherNID = dto.FatherNID,
+                FatherContactNumber = dto.FatherContactNumber,
+                MotherName = dto.MotherName,
+                MotherNID = dto.MotherNID,
+                MotherContactNumber = dto.MotherContactNumber,
+                LocalGuardianName = dto.LocalGuardianName,
+                LocalGuardianContactNumber = dto.LocalGuardianContactNumber,
+                TemporaryAddress = dto.TemporaryAddress,
+                PermanentAddress = dto.PermanentAddress
+            };
+
+            _context.dbsStudent.Add(entity);
+            await _context.SaveChangesAsync();
+
+            var createdEntity = await _context.dbsStudent
+                .Include(s => s.Standard)
+                .FirstOrDefaultAsync(s => s.StudentId == entity.StudentId) ?? entity;
+
+            return (true, null, MapToResponseDto(createdEntity));
         }
 
         public async Task<bool> DeleteStudentAsync(int id)
         {
             var student = await _context.dbsStudent.FindAsync(id);
-            if (student == null)
-            {
-                return false;
-            }
+            if (student == null) return false;
 
             _context.dbsStudent.Remove(student);
             await _context.SaveChangesAsync();
@@ -106,6 +173,40 @@ namespace SchoolApiService.Services.Implementations
         public async Task<bool> StudentExistsAsync(int id)
         {
             return await _context.dbsStudent.AnyAsync(e => e.StudentId == id);
+        }
+
+        private static StudentResponseDto MapToResponseDto(Student s)
+        {
+            return new StudentResponseDto
+            {
+                StudentId = s.StudentId,
+                AdmissionNo = s.AdmissionNo,
+                EnrollmentNo = s.EnrollmentNo,
+                UniqueStudentAttendanceNumber = s.UniqueStudentAttendanceNumber,
+                StudentName = s.StudentName ?? string.Empty,
+                StudentDOB = s.StudentDOB,
+                StudentGender = s.StudentGender?.ToString(),
+                StudentReligion = s.StudentReligion,
+                StudentBloodGroup = s.StudentBloodGroup,
+                StudentNationality = s.StudentNationality,
+                StudentNIDNumber = s.StudentNIDNumber,
+                StudentContactNumber1 = s.StudentContactNumber1,
+                StudentContactNumber2 = s.StudentContactNumber2,
+                StudentEmail = s.StudentEmail ?? string.Empty,
+                StandardId = s.StandardId ?? 0,
+                StandardName = s.Standard?.StandardName,
+                ImagePath = s.ImagePath,
+                FatherName = s.FatherName,
+                FatherNID = s.FatherNID,
+                FatherContactNumber = s.FatherContactNumber,
+                MotherName = s.MotherName,
+                MotherNID = s.MotherNID,
+                MotherContactNumber = s.MotherContactNumber,
+                LocalGuardianName = s.LocalGuardianName,
+                LocalGuardianContactNumber = s.LocalGuardianContactNumber,
+                TemporaryAddress = s.TemporaryAddress,
+                PermanentAddress = s.PermanentAddress
+            };
         }
     }
 }

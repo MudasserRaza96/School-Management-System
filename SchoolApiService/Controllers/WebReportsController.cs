@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -17,17 +18,18 @@ namespace SchoolApiService.Controllers
         }
 
         [HttpGet]
-        public ActionResult<string?> Get()
+        public ActionResult<ApiResponse<string>> Get()
         {
-            try
+            var pdfBase64 = _webReportService.GenerateReportPdfBase64();
+            if (string.IsNullOrEmpty(pdfBase64))
             {
-                var pdfBase64 = _webReportService.GenerateReportPdfBase64();
-                return Ok(pdfBase64);
+                return BadRequest(ApiResponse<string>.ErrorResponse(
+                    "Report generation failed.",
+                    new List<string> { "Failed to generate report PDF base64 output." },
+                    400
+                ));
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex);
-            }
+            return Ok(ApiResponse<string>.SuccessResponse(pdfBase64, "Web report generated successfully."));
         }
     }
 }

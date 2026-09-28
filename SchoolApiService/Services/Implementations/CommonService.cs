@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
@@ -19,31 +20,70 @@ namespace SchoolApiService.Services.Implementations
             return Enum.GetNames(typeof(Frequency));
         }
 
-        public async Task<IEnumerable<MonthlyPayment>> GetAllPaymentByStudentIdAsync(int studentId)
+        public async Task<IEnumerable<MonthlyPaymentDto>> GetAllPaymentByStudentIdAsync(int studentId)
         {
-            return await _context.monthlyPayments
-                .Include(p => p.PaymentDetails)
-                .Include(p => p.paymentMonths)
+            var payments = await _context.monthlyPayments
+                .Include(p => p.Student)
                 .Where(p => p.StudentId == studentId)
                 .ToListAsync();
+
+            return payments.Select(p => new MonthlyPaymentDto
+            {
+                MonthlyPaymentId = p.MonthlyPaymentId,
+                StudentId = p.StudentId ?? 0,
+                StudentName = p.Student?.StudentName,
+                Amount = p.TotalAmount,
+                PaymentDate = p.PaymentDate
+            });
         }
 
-        public async Task<IEnumerable<OthersPayment>> GetAllOtherPaymentByStudentIdAsync(int studentId)
+        public async Task<IEnumerable<OthersPaymentDto>> GetAllOtherPaymentByStudentIdAsync(int studentId)
         {
-            return await _context.othersPayments
-                .Include(p => p.otherPaymentDetails)
+            var payments = await _context.othersPayments
+                .Include(p => p.Student)
                 .Where(p => p.StudentId == studentId)
                 .ToListAsync();
+
+            return payments.Select(p => new OthersPaymentDto
+            {
+                OthersPaymentId = p.OthersPaymentId,
+                StudentId = p.StudentId ?? 0,
+                StudentName = p.Student?.StudentName,
+                Amount = p.TotalAmount,
+                PaymentDate = p.PaymentDate
+            });
         }
 
-        public async Task<IEnumerable<DueBalance>> GetDueBalancesAsync()
+        public async Task<IEnumerable<DueBalanceDto>> GetDueBalancesAsync()
         {
-            return await _context.dbsDueBalance.ToListAsync();
+            var dueBalances = await _context.dbsDueBalance
+                .Include(d => d.Student)
+                .ToListAsync();
+
+            return dueBalances.Select(d => new DueBalanceDto
+            {
+                DueBalanceId = d.DueBalanceId,
+                StudentId = d.StudentId ?? 0,
+                StudentName = d.Student?.StudentName,
+                DueAmount = d.DueBalanceAmount ?? 0
+            });
         }
 
-        public async Task<DueBalance?> GetDueBalanceByIdAsync(int id)
+        public async Task<DueBalanceDto?> GetDueBalanceByIdAsync(int id)
         {
-            return await _context.dbsDueBalance.FindAsync(id);
+            var d = await _context.dbsDueBalance
+                .Include(x => x.Student)
+                .FirstOrDefaultAsync(x => x.DueBalanceId == id);
+
+            if (d == null) return null;
+
+            return new DueBalanceDto
+            {
+                DueBalanceId = d.DueBalanceId,
+                StudentId = d.StudentId ?? 0,
+                StudentName = d.Student?.StudentName,
+                DueAmount = d.DueBalanceAmount ?? 0
+            };
         }
 
         public async Task<IEnumerable<object>> GetPaymentDetailsByStudentIdAsync(int studentId)

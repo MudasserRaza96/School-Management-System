@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +11,8 @@ namespace SchoolApp.Models.DataModels.SecurityModels
         public string? Username { get; set; }
         public string? Email { get; set; }
         public string? Token { get; set; }
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiryTime { get; set; }
         public string Roles { get; set; } = "";
     }
 }

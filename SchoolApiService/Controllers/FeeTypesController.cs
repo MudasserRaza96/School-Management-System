@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -17,76 +18,64 @@ namespace SchoolApiService.Controllers
             _feeTypeService = feeTypeService;
         }
 
-        // GET: api/FeeTypes
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<FeeType>>> GetdbsFeeType()
+        public async Task<ActionResult<ApiResponse<IEnumerable<FeeTypeDto>>>> GetFeeTypes()
         {
-            var feeTypes = await _feeTypeService.GetAllAsync();
-            return Ok(feeTypes);
+            var types = await _feeTypeService.GetAllAsync();
+            return Ok(ApiResponse<IEnumerable<FeeTypeDto>>.SuccessResponse(types, "Fee types retrieved successfully."));
         }
 
-        // GET: api/FeeTypes/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<FeeType>> GetFeeType(int id)
+        public async Task<ActionResult<ApiResponse<FeeTypeDto>>> GetFeeType(int id)
         {
-            var feeType = await _feeTypeService.GetByIdAsync(id);
-
-            if (feeType == null)
+            var type = await _feeTypeService.GetByIdAsync(id);
+            if (type == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<FeeTypeDto>.ErrorResponse($"No fee type found with ID {id}.", statusCode: 404));
             }
 
-            return feeType;
+            return Ok(ApiResponse<FeeTypeDto>.SuccessResponse(type, "Fee type retrieved successfully."));
         }
 
-        // PUT: api/FeeTypes/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutFeeType(int id, FeeType feeType)
+        public async Task<ActionResult<ApiResponse<object>>> PutFeeType(int id, FeeTypeDto dto)
         {
-            if (id != feeType.FeeTypeId)
+            if (id != dto.FeeTypeId)
             {
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload FeeTypeId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.FeeTypeId}'." }, 400));
             }
 
-            try
+            var success = await _feeTypeService.UpdateAsync(id, dto);
+            if (!success)
             {
-                var result = await _feeTypeService.UpdateAsync(id, feeType);
-                if (!result)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception)
-            {
-                if (!await _feeTypeService.ExistsAsync(id))
-                {
-                    return NotFound();
-                }
-                throw;
+                return NotFound(ApiResponse<object>.ErrorResponse($"No fee type found with ID {id} to update.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Fee type updated successfully."));
         }
 
-        // POST: api/FeeTypes
         [HttpPost]
-        public async Task<ActionResult<FeeType>> PostFeeType(FeeType feeType)
+        public async Task<ActionResult<ApiResponse<FeeTypeDto>>> PostFeeType(FeeTypeDto dto)
         {
-            var created = await _feeTypeService.CreateAsync(feeType);
-            return CreatedAtAction("GetFeeType", new { id = created.FeeTypeId }, created);
+            if (string.IsNullOrWhiteSpace(dto.FeeTypeName))
+            {
+                return BadRequest(ApiResponse<FeeTypeDto>.ErrorResponse("Fee type creation failed.", new List<string> { "FeeTypeName is required." }, 400));
+            }
+
+            var created = await _feeTypeService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetFeeType), new { id = created.FeeTypeId }, ApiResponse<FeeTypeDto>.SuccessResponse(created, "Fee type created successfully.", 201));
         }
 
-        // DELETE: api/FeeTypes/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteFeeType(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteFeeType(int id)
         {
             var success = await _feeTypeService.DeleteAsync(id);
             if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No fee type found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Fee type deleted successfully."));
         }
     }
 }

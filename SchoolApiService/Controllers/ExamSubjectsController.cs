@@ -1,14 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using SchoolApiService.ViewModels;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 
 namespace SchoolApiService.Controllers
 {
@@ -24,181 +20,105 @@ namespace SchoolApiService.Controllers
             _context = context;
         }
 
-        // GET: api/ExamSubjects
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ExamSubject>>> GetdbsExamSubject()
+        public async Task<ActionResult<ApiResponse<IEnumerable<ExamSubjectDto>>>> GetExamSubjects()
         {
-            var examSubjects = await _context.dbsExamSubject
+            var subjects = await _context.dbsExamSubject
                 .Include(es => es.Subject)
-                .ThenInclude(ess => ess.Standard)
                 .AsNoTracking()
                 .ToListAsync();
 
+            var dtos = subjects.Select(es => new ExamSubjectDto
+            {
+                ExamSubjectId = es.ExamSubjectId,
+                ExamScheduleId = es.ExamScheduleStandardId ?? 0,
+                SubjectId = es.SubjectId,
+                SubjectName = es.Subject?.SubjectName,
+                TotalMarks = es.TotalMarks,
+                PassMarks = es.PassMarks
+            });
 
-            return examSubjects;
+            return Ok(ApiResponse<IEnumerable<ExamSubjectDto>>.SuccessResponse(dtos, "Exam subjects retrieved successfully."));
         }
 
-        // GET: api/ExamSubjects/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<ExamSubject>> GetExamSubject(int id)
+        public async Task<ActionResult<ApiResponse<ExamSubjectDto>>> GetExamSubject(int id)
         {
-            var examSubject = await _context.dbsExamSubject
+            var es = await _context.dbsExamSubject
                 .Include(es => es.Subject)
-                .ThenInclude(ess => ess.Standard)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(es => es.ExamSubjectId == id);
 
-
-            if (examSubject == null)
+            if (es == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<ExamSubjectDto>.ErrorResponse($"No exam subject found with ID {id}.", statusCode: 404));
             }
 
-            return examSubject;
+            var dto = new ExamSubjectDto
+            {
+                ExamSubjectId = es.ExamSubjectId,
+                ExamScheduleId = es.ExamScheduleStandardId ?? 0,
+                SubjectId = es.SubjectId,
+                SubjectName = es.Subject?.SubjectName,
+                TotalMarks = es.TotalMarks,
+                PassMarks = es.PassMarks
+            };
+
+            return Ok(ApiResponse<ExamSubjectDto>.SuccessResponse(dto, "Exam subject retrieved successfully."));
         }
 
-        // PUT: api/ExamSubjects/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutExamSubject(int id, ExamSubject examSubject)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            using (var transaction = _context.Database.BeginTransaction())
-            {
-                try
-                {
-                    var existingExamSubject = await _context.dbsExamSubject
-                        .FirstOrDefaultAsync(es => es.ExamSubjectId == id);
-
-                    if (existingExamSubject == null)
-                    {
-                        return NotFound($"ExamSubject with ID {id} not found.");
-                    }
-
-                    bool isExamDateProvided = examSubject.ExamDate != default;
-                    bool isSubjectIdProvided = examSubject.SubjectId != default;
-                    bool isExamTypeIdProvided = examSubject.ExamTypeId != default;
-                    bool isExamStartTime = examSubject.ExamStartTime != default;
-                    bool isExamEndTime = examSubject.ExamEndTime != default;
-
-                    // Update properties of the existing exam subject only if they are provided in the updatedExamSubject
-                    if (isExamTypeIdProvided)
-                    {
-                        // Check if the provided SubjectId exists
-                        var existingExamType = await _context.dbsExamType
-                            .FirstOrDefaultAsync(s => s.ExamTypeId == examSubject.ExamTypeId);
-
-                        if (existingExamType == null)
-                        {
-                            // The provided SubjectId doesn't exist, so return BadRequest
-                            return BadRequest($"SubjectId {examSubject.ExamTypeId} does not exist.");
-                        }
-
-                        existingExamSubject.SubjectId = examSubject.SubjectId;
-                    }
-                    if (isExamDateProvided)
-                    {
-                        existingExamSubject.ExamDate = examSubject.ExamDate;
-                    }
-
-                    if (isExamStartTime)
-                    {
-                        existingExamSubject.ExamStartTime = examSubject.ExamStartTime;
-                    }
-
-                    if (isExamEndTime)
-                    {
-                        existingExamSubject.ExamEndTime = examSubject.ExamEndTime;
-                    }
-                    if (isSubjectIdProvided)
-                    {
-                        // Check if the provided SubjectId exists
-                        var existingSubject = await _context.dbsSubject
-                            .FirstOrDefaultAsync(s => s.SubjectId == examSubject.SubjectId);
-
-                        if (existingSubject == null)
-                        {
-                            // The provided SubjectId doesn't exist, so return BadRequest
-                            return BadRequest($"SubjectId {examSubject.SubjectId} does not exist.");
-                        }
-
-                        existingExamSubject.SubjectId = examSubject.SubjectId;
-                    }
-
-                    // Save changes to the database
-                    await _context.SaveChangesAsync();
-
-                    transaction.Commit();
-
-                    return Ok(existingExamSubject);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Exception: {ex}");
-
-                    transaction.Rollback();
-                    return StatusCode(500, $"Internal Server Error: {ex.Message}");
-                }
-            }
-        }
-
-        // POST: api/ExamSubjects
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult> PostExamSubject(CreateExamSubjectVM examSubjectRequest)
+        public async Task<ActionResult<ApiResponse<ExamSubjectDto>>> PostExamSubject(ExamSubjectDto dto)
         {
-            try
+            var entity = new ExamSubject
             {
-                if (ModelState.IsValid)
-                {
-                    var examSubject = new ExamSubject
-                    {
-                        SubjectId = examSubjectRequest.SubjectId,
-                        ExamScheduleStandardId = examSubjectRequest.ExamScheduleStandardId,
-                        ExamDate = examSubjectRequest.ExamDate,
-                        //ExamStartTime = examSubjectRequest.ExamStartTime,
-                        //ExamEndTime = examSubjectRequest.ExamEndTime,
-                        ExamTypeId = examSubjectRequest.ExamTypeId
-                    };
-                    _context.dbsExamSubject.Add(examSubject);
-                    await _context.SaveChangesAsync();
+                SubjectId = dto.SubjectId,
+                TotalMarks = dto.TotalMarks,
+                PassMarks = dto.PassMarks
+            };
 
-                    return CreatedAtAction("GetExamSubject", new { id = examSubject.ExamSubjectId }, examSubject);
+            _context.dbsExamSubject.Add(entity);
+            await _context.SaveChangesAsync();
+            dto.ExamSubjectId = entity.ExamSubjectId;
 
-                }
-                else
-                {
-                    return BadRequest(ModelState);
-                }
-
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            return CreatedAtAction(nameof(GetExamSubject), new { id = dto.ExamSubjectId }, ApiResponse<ExamSubjectDto>.SuccessResponse(dto, "Exam subject created successfully.", 201));
         }
 
-        // DELETE: api/ExamSubjects/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteExamSubject(int id)
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> PutExamSubject(int id, ExamSubjectDto dto)
         {
-            var examSubject = await _context.dbsExamSubject.FindAsync(id);
-            if (examSubject == null)
+            if (id != dto.ExamSubjectId)
             {
-                return NotFound();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload ExamSubjectId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.ExamSubjectId}'." }, 400));
             }
 
-            _context.dbsExamSubject.Remove(examSubject);
+            var entity = await _context.dbsExamSubject.FindAsync(id);
+            if (entity == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No exam subject found with ID {id} to update.", statusCode: 404));
+            }
+
+            entity.SubjectId = dto.SubjectId;
+            entity.TotalMarks = dto.TotalMarks;
+            entity.PassMarks = dto.PassMarks;
+
+            await _context.SaveChangesAsync();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Exam subject updated successfully."));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteExamSubject(int id)
+        {
+            var entity = await _context.dbsExamSubject.FindAsync(id);
+            if (entity == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No exam subject found with ID {id} to delete.", statusCode: 404));
+            }
+
+            _context.dbsExamSubject.Remove(entity);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Exam subject deleted successfully."));
         }
-
-
     }
-
 }

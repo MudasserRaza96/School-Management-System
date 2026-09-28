@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
@@ -14,50 +15,61 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<Subject>> GetAllAsync()
+        public async Task<IEnumerable<SubjectDto>> GetAllAsync()
         {
-            return await _context.dbsSubject.Include(s => s.Standard).ToListAsync();
+            var subjs = await _context.dbsSubject.ToListAsync();
+            return subjs.Select(s => new SubjectDto
+            {
+                SubjectId = s.SubjectId,
+                SubjectName = s.SubjectName ?? string.Empty,
+                SubjectCode = s.SubjectCode
+            });
         }
 
-        public async Task<Subject?> GetByIdAsync(int id)
+        public async Task<SubjectDto?> GetByIdAsync(int id)
         {
-            return await _context.dbsSubject.FindAsync(id);
+            var s = await _context.dbsSubject.FindAsync(id);
+            if (s == null) return null;
+            return new SubjectDto
+            {
+                SubjectId = s.SubjectId,
+                SubjectName = s.SubjectName ?? string.Empty,
+                SubjectCode = s.SubjectCode
+            };
         }
 
-        public async Task<Subject> CreateAsync(Subject subject)
+        public async Task<SubjectDto> CreateAsync(SubjectDto dto)
         {
-            _context.dbsSubject.Add(subject);
+            var entity = new Subject
+            {
+                SubjectName = dto.SubjectName,
+                SubjectCode = dto.SubjectCode
+            };
+            _context.dbsSubject.Add(entity);
             await _context.SaveChangesAsync();
-            return subject;
+            dto.SubjectId = entity.SubjectId;
+            return dto;
         }
 
-        public async Task<bool> UpdateAsync(int id, Subject subject)
+        public async Task<bool> UpdateAsync(int id, SubjectDto dto)
         {
-            if (id != subject.SubjectId) return false;
+            if (id != dto.SubjectId) return false;
 
-            _context.Entry(subject).State = EntityState.Modified;
+            var entity = await _context.dbsSubject.FindAsync(id);
+            if (entity == null) return false;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await ExistsAsync(id))
-                {
-                    return false;
-                }
-                throw;
-            }
+            entity.SubjectName = dto.SubjectName;
+            entity.SubjectCode = dto.SubjectCode;
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var subject = await _context.dbsSubject.FindAsync(id);
-            if (subject == null) return false;
+            var subj = await _context.dbsSubject.FindAsync(id);
+            if (subj == null) return false;
 
-            _context.dbsSubject.Remove(subject);
+            _context.dbsSubject.Remove(subj);
             await _context.SaveChangesAsync();
             return true;
         }

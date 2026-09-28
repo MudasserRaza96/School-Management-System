@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
@@ -14,50 +15,57 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<Department>> GetAllAsync()
+        public async Task<IEnumerable<DepartmentDto>> GetAllAsync()
         {
-            return await _context.dbsDepartment.ToListAsync();
+            var depts = await _context.dbsDepartment.ToListAsync();
+            return depts.Select(d => new DepartmentDto
+            {
+                DepartmentId = d.DepartmentId,
+                DepartmentName = d.DepartmentName ?? string.Empty
+            });
         }
 
-        public async Task<Department?> GetByIdAsync(int id)
+        public async Task<DepartmentDto?> GetByIdAsync(int id)
         {
-            return await _context.dbsDepartment.FindAsync(id);
+            var d = await _context.dbsDepartment.FindAsync(id);
+            if (d == null) return null;
+            return new DepartmentDto
+            {
+                DepartmentId = d.DepartmentId,
+                DepartmentName = d.DepartmentName ?? string.Empty
+            };
         }
 
-        public async Task<Department> CreateAsync(Department department)
+        public async Task<DepartmentDto> CreateAsync(DepartmentDto dto)
         {
-            _context.dbsDepartment.Add(department);
+            var entity = new Department
+            {
+                DepartmentName = dto.DepartmentName
+            };
+            _context.dbsDepartment.Add(entity);
             await _context.SaveChangesAsync();
-            return department;
+            dto.DepartmentId = entity.DepartmentId;
+            return dto;
         }
 
-        public async Task<bool> UpdateAsync(int id, Department department)
+        public async Task<bool> UpdateAsync(int id, DepartmentDto dto)
         {
-            if (id != department.DepartmentId) return false;
+            if (id != dto.DepartmentId) return false;
 
-            _context.Entry(department).State = EntityState.Modified;
+            var entity = await _context.dbsDepartment.FindAsync(id);
+            if (entity == null) return false;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await ExistsAsync(id))
-                {
-                    return false;
-                }
-                throw;
-            }
+            entity.DepartmentName = dto.DepartmentName;
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var department = await _context.dbsDepartment.FindAsync(id);
-            if (department == null) return false;
+            var dept = await _context.dbsDepartment.FindAsync(id);
+            if (dept == null) return false;
 
-            _context.dbsDepartment.Remove(department);
+            _context.dbsDepartment.Remove(dept);
             await _context.SaveChangesAsync();
             return true;
         }

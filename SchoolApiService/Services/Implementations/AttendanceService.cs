@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using SchoolApiService.Services.Interfaces;
-using SchoolApiService.ViewModels;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Services.Interfaces;
+using SchoolApiService.ViewModels;
 
 namespace SchoolApiService.Services.Implementations
 {
@@ -15,14 +16,32 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<Attendance>> GetAllAttendancesAsync()
+        public async Task<IEnumerable<AttendanceDto>> GetAllAttendancesAsync()
         {
-            return await _context.dbsAttendance.ToListAsync();
+            var records = await _context.dbsAttendance.ToListAsync();
+            return records.Select(r => new AttendanceDto
+            {
+                AttendanceId = r.AttendanceId,
+                AttendanceDate = r.Date,
+                StudentId = r.AttendanceIdentificationNumber,
+                IsPresent = r.IsPresent,
+                Remarks = r.Description
+            });
         }
 
-        public async Task<Attendance?> GetAttendanceByIdAsync(int id)
+        public async Task<AttendanceDto?> GetAttendanceByIdAsync(int id)
         {
-            return await _context.dbsAttendance.FindAsync(id);
+            var r = await _context.dbsAttendance.FindAsync(id);
+            if (r == null) return null;
+
+            return new AttendanceDto
+            {
+                AttendanceId = r.AttendanceId,
+                AttendanceDate = r.Date,
+                StudentId = r.AttendanceIdentificationNumber,
+                IsPresent = r.IsPresent,
+                Remarks = r.Description
+            };
         }
 
         public async Task<IEnumerable<AttList>> GetAttendanceListByTypeAsync(AttendanceType type)
@@ -48,88 +67,49 @@ namespace SchoolApiService.Services.Implementations
             return data;
         }
 
-        public async Task<(bool Succeeded, string? ErrorMessage, Attendance? CreatedAttendance)> CreateAttendanceAsync(Attendance attendance)
+        public async Task<(bool Succeeded, string? ErrorMessage, AttendanceDto? CreatedAttendance)> CreateAttendanceAsync(AttendanceDto dto)
         {
-            if (!Enum.IsDefined(typeof(AttendanceType), attendance.Type))
+            var entity = new Attendance
             {
-                return (false, "Invalid attendance type.", null);
-            }
+                Date = dto.AttendanceDate,
+                AttendanceIdentificationNumber = dto.StudentId,
+                IsPresent = dto.IsPresent,
+                Description = dto.Remarks,
+                Type = AttendanceType.Student
+            };
 
-            bool exists = false;
-            switch (attendance.Type)
-            {
-                case AttendanceType.Student:
-                    exists = await _context.dbsStudent.AnyAsync(s => s.UniqueStudentAttendanceNumber == attendance.AttendanceIdentificationNumber);
-                    break;
-                case AttendanceType.Staff:
-                    exists = await _context.dbsStaff.AnyAsync(s => s.UniqueStaffAttendanceNumber == attendance.AttendanceIdentificationNumber);
-                    break;
-                default:
-                    return (false, "Invalid attendance type.", null);
-            }
-
-            if (!exists)
-            {
-                return (false, "Invalid attendance identification number.", null);
-            }
-
-            _context.dbsAttendance.Add(attendance);
+            _context.dbsAttendance.Add(entity);
             await _context.SaveChangesAsync();
-            return (true, null, attendance);
+            dto.AttendanceId = entity.AttendanceId;
+            return (true, null, dto);
         }
 
-        public async Task<(bool Succeeded, string? ErrorMessage, bool ConcurrencyError)> UpdateAttendanceAsync(int id, Attendance attendance)
+        public async Task<(bool Succeeded, string? ErrorMessage, bool ConcurrencyError)> UpdateAttendanceAsync(int id, AttendanceDto dto)
         {
-            if (id != attendance.AttendanceId)
+            if (id != dto.AttendanceId)
             {
                 return (false, "Invalid AttendanceId", false);
             }
 
-            if (attendance.Type == AttendanceType.Student)
+            var entity = await _context.dbsAttendance.FindAsync(id);
+            if (entity == null)
             {
-                var studentExists = await _context.dbsStudent.AnyAsync(s => s.UniqueStudentAttendanceNumber == attendance.AttendanceIdentificationNumber);
-                if (!studentExists)
-                {
-                    return (false, "Invalid student attendance number", false);
-                }
-            }
-            else if (attendance.Type == AttendanceType.Staff)
-            {
-                var staffExists = await _context.dbsStaff.AnyAsync(s => s.UniqueStaffAttendanceNumber == attendance.AttendanceIdentificationNumber);
-                if (!staffExists)
-                {
-                    return (false, "Invalid staff attendance number", false);
-                }
-            }
-            else
-            {
-                return (false, "Invalid attendance type", false);
+                return (false, "Attendance record not found.", false);
             }
 
-            _context.Entry(attendance).State = EntityState.Modified;
+            entity.Date = dto.AttendanceDate;
+            entity.AttendanceIdentificationNumber = dto.StudentId;
+            entity.IsPresent = dto.IsPresent;
+            entity.Description = dto.Remarks;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return (true, null, false);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await AttendanceExistsAsync(id))
-                {
-                    return (false, null, true);
-                }
-                throw;
-            }
+            await _context.SaveChangesAsync();
+            return (true, null, false);
         }
 
         public async Task<bool> DeleteAttendanceAsync(int id)
         {
             var attendance = await _context.dbsAttendance.FindAsync(id);
-            if (attendance == null)
-            {
-                return false;
-            }
+            if (attendance == null) return false;
 
             _context.dbsAttendance.Remove(attendance);
             await _context.SaveChangesAsync();

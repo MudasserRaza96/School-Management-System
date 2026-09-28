@@ -1,13 +1,13 @@
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 
 namespace SchoolApiService.Services.Interfaces
 {
     public interface IAcademicMonthService
     {
-        Task<IEnumerable<AcademicMonth>> GetAllAsync();
-        Task<AcademicMonth?> GetByIdAsync(int id);
-        Task<AcademicMonth> CreateAsync(AcademicMonth academicMonth);
-        Task<bool> UpdateAsync(int id, AcademicMonth academicMonth);
+        Task<IEnumerable<AcademicMonthDto>> GetAllAsync();
+        Task<AcademicMonthDto?> GetByIdAsync(int id);
+        Task<AcademicMonthDto> CreateAsync(AcademicMonthDto dto);
+        Task<bool> UpdateAsync(int id, AcademicMonthDto dto);
         Task<bool> DeleteAsync(int id);
         Task<bool> ExistsAsync(int id);
     }

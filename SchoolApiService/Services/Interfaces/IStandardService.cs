@@ -1,14 +1,14 @@
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 
 namespace SchoolApiService.Services.Interfaces
 {
     public interface IStandardService
     {
-        Task<IEnumerable<Standard>> GetAllAsync();
-        Task<Standard?> GetByIdAsync(int id);
-        Task<Standard> CreateAsync(Standard standard);
-        Task<bool> UpdateAsync(int id, Standard standard);
-        Task<(bool Success, string? ErrorMessage)> DeleteAsync(int id);
+        Task<IEnumerable<StandardDto>> GetAllAsync();
+        Task<StandardDto?> GetByIdAsync(int id);
+        Task<StandardDto> CreateAsync(StandardDto dto);
+        Task<bool> UpdateAsync(int id, StandardDto dto);
+        Task<bool> DeleteAsync(int id);
         Task<bool> ExistsAsync(int id);
     }
 }

@@ -1,158 +1,119 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using SchoolApiService.ImageHandle;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
-using static NuGet.Packaging.PackagingConstants;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 
 namespace SchoolApiService.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize()]
     public class EmployeesController : ControllerBase
     {
         private readonly SchoolDbContext _context;
-        private readonly IWebHostEnvironment _hostEnvironment;
 
-        public EmployeesController(SchoolDbContext context, IWebHostEnvironment hostEnvironment)
+        public EmployeesController(SchoolDbContext context)
         {
             _context = context;
-            _hostEnvironment = hostEnvironment;
-        }
-
-
-        //Asynchronously uploads an employee image to the "Upload" folder and sets the image path on the EmployeesImg object.
-        private async Task<string> UploadImage(EmployeesImg empPic)
-        {
-            string imagepath = "\\Upload\\" + empPic.file.FileName;
-
-
-            string filepath = _hostEnvironment.WebRootPath + imagepath;
-
-            using (FileStream filestream = System.IO.File.Create(filepath))
-            {
-                await empPic.file.CopyToAsync(filestream);
-                await filestream.FlushAsync();
-                //  return "\\Upload\\" + objFile.files.FileName;
-            }
-
-            empPic.ImagePath = imagepath;
-            return imagepath;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Employee>>> GetdbsEmployee()
+        public async Task<ActionResult<ApiResponse<IEnumerable<EmployeeDto>>>> GetEmployees()
         {
-            return await _context.dbsEmployee.Include(e => e.EmployeeType).ToListAsync();
+            var employees = await _context.dbsEmployee.Include(e => e.EmployeeType).ToListAsync();
+            var dtos = employees.Select(e => new EmployeeDto
+            {
+                EmployeeId = e.EmployeeId,
+                EmployeeName = e.EmployeeName ?? string.Empty,
+                EmployeeTypeId = e.EmployeeTypeId,
+                EmployeeTypeName = e.EmployeeType?.EmployeeTypeName,
+                ImagePath = e.ImagePath
+            });
+
+            return Ok(ApiResponse<IEnumerable<EmployeeDto>>.SuccessResponse(dtos, "Employees retrieved successfully."));
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Employee>> GetEmployee(int id)
+        public async Task<ActionResult<ApiResponse<EmployeeDto>>> GetEmployee(int id)
         {
-            var employee = await _context.dbsEmployee
-              .Include(e => e.EmployeeType)
-              .FirstOrDefaultAsync(e => e.EmployeeId == id);
-
+            var employee = await _context.dbsEmployee.Include(e => e.EmployeeType).FirstOrDefaultAsync(e => e.EmployeeId == id);
             if (employee == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<EmployeeDto>.ErrorResponse($"No employee found with ID {id}.", statusCode: 404));
             }
 
-            return employee;
+            var dto = new EmployeeDto
+            {
+                EmployeeId = employee.EmployeeId,
+                EmployeeName = employee.EmployeeName ?? string.Empty,
+                EmployeeTypeId = employee.EmployeeTypeId,
+                EmployeeTypeName = employee.EmployeeType?.EmployeeTypeName,
+                ImagePath = employee.ImagePath
+            };
+
+            return Ok(ApiResponse<EmployeeDto>.SuccessResponse(dto, "Employee retrieved successfully."));
         }
-
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutEmployee(int id, EmployeesImg empPic)
-        {
-            if (id != empPic.EmployeeId)
-            {
-                return BadRequest();
-            }
-
-            if (empPic.file != null)
-            {
-                try
-                {
-                    empPic.ImagePath = await UploadImage(empPic);
-                }
-                catch (Exception ex)
-                {
-                    return BadRequest(ex.Message);
-                }
-            }
-            _context.Entry(empPic).State = EntityState.Modified;
-
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!EmployeeExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            return NoContent();
-        }
-
 
         [HttpPost]
-        public async Task<ActionResult<Employee>> PostEmployee(EmployeesImg empPic)
+        public async Task<ActionResult<ApiResponse<EmployeeDto>>> PostEmployee(EmployeeDto dto)
         {
-            if (empPic.file != null)
+            if (string.IsNullOrWhiteSpace(dto.EmployeeName))
             {
-                try
-                {
-                    empPic.ImagePath = await UploadImage(empPic);
-                }
-                catch (Exception ex)
-                {
-                    return BadRequest(ex.Message);
-                }
+                return BadRequest(ApiResponse<EmployeeDto>.ErrorResponse("Employee creation failed.", new List<string> { "EmployeeName is required." }, 400));
             }
 
-            _context.Attach(empPic);
+            var entity = new Employee
+            {
+                EmployeeName = dto.EmployeeName,
+                EmployeeTypeId = dto.EmployeeTypeId,
+                ImagePath = dto.ImagePath
+            };
 
-            _context.Entry(empPic).Reference(e => e.EmployeeType).Load();
-
+            _context.dbsEmployee.Add(entity);
             await _context.SaveChangesAsync();
+            dto.EmployeeId = entity.EmployeeId;
 
-            return CreatedAtAction("GetEmployee", new { id = empPic.EmployeeId }, empPic);
+            return CreatedAtAction(nameof(GetEmployee), new { id = dto.EmployeeId }, ApiResponse<EmployeeDto>.SuccessResponse(dto, "Employee created successfully.", 201));
         }
 
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> PutEmployee(int id, EmployeeDto dto)
+        {
+            if (id != dto.EmployeeId)
+            {
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload EmployeeId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.EmployeeId}'." }, 400));
+            }
+
+            var entity = await _context.dbsEmployee.FindAsync(id);
+            if (entity == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No employee found with ID {id} to update.", statusCode: 404));
+            }
+
+            entity.EmployeeName = dto.EmployeeName;
+            entity.EmployeeTypeId = dto.EmployeeTypeId;
+            entity.ImagePath = dto.ImagePath;
+
+            await _context.SaveChangesAsync();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Employee updated successfully."));
+        }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteEmployee(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteEmployee(int id)
         {
-            var employee = await _context.dbsEmployee.FindAsync(id);
-            if (employee == null)
+            var entity = await _context.dbsEmployee.FindAsync(id);
+            if (entity == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No employee found with ID {id} to delete.", statusCode: 404));
             }
 
-            _context.dbsEmployee.Remove(employee);
+            _context.dbsEmployee.Remove(entity);
             await _context.SaveChangesAsync();
 
-            return NoContent();
-        }
-
-        private bool EmployeeExists(int id)
-        {
-            return _context.dbsEmployee.Any(e => e.EmployeeId == id);
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Employee deleted successfully."));
         }
     }
 }

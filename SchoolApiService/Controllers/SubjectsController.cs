@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -17,76 +18,64 @@ namespace SchoolApiService.Controllers
             _subjectService = subjectService;
         }
 
-        // GET: api/Subjects
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Subject>>> GetdbsSubject()
+        public async Task<ActionResult<ApiResponse<IEnumerable<SubjectDto>>>> GetSubjects()
         {
-            var subjects = await _subjectService.GetAllAsync();
-            return Ok(subjects);
+            var subjs = await _subjectService.GetAllAsync();
+            return Ok(ApiResponse<IEnumerable<SubjectDto>>.SuccessResponse(subjs, "Subjects retrieved successfully."));
         }
 
-        // GET: api/Subjects/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Subject>> GetSubject(int id)
+        public async Task<ActionResult<ApiResponse<SubjectDto>>> GetSubject(int id)
         {
-            var subject = await _subjectService.GetByIdAsync(id);
-
-            if (subject == null)
+            var subj = await _subjectService.GetByIdAsync(id);
+            if (subj == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<SubjectDto>.ErrorResponse($"No subject found with ID {id}.", statusCode: 404));
             }
 
-            return subject;
+            return Ok(ApiResponse<SubjectDto>.SuccessResponse(subj, "Subject retrieved successfully."));
         }
 
-        // PUT: api/Subjects/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutSubject(int id, Subject subject)
+        public async Task<ActionResult<ApiResponse<object>>> PutSubject(int id, SubjectDto dto)
         {
-            if (id != subject.SubjectId)
+            if (id != dto.SubjectId)
             {
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload SubjectId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.SubjectId}'." }, 400));
             }
 
-            try
+            var success = await _subjectService.UpdateAsync(id, dto);
+            if (!success)
             {
-                var result = await _subjectService.UpdateAsync(id, subject);
-                if (!result)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception)
-            {
-                if (!await _subjectService.ExistsAsync(id))
-                {
-                    return NotFound();
-                }
-                throw;
+                return NotFound(ApiResponse<object>.ErrorResponse($"No subject found with ID {id} to update.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Subject updated successfully."));
         }
 
-        // POST: api/Subjects
         [HttpPost]
-        public async Task<ActionResult<Subject>> PostSubject(Subject subject)
+        public async Task<ActionResult<ApiResponse<SubjectDto>>> PostSubject(SubjectDto dto)
         {
-            var created = await _subjectService.CreateAsync(subject);
-            return CreatedAtAction("GetSubject", new { id = created.SubjectId }, created);
+            if (string.IsNullOrWhiteSpace(dto.SubjectName))
+            {
+                return BadRequest(ApiResponse<SubjectDto>.ErrorResponse("Subject creation failed.", new List<string> { "SubjectName is required." }, 400));
+            }
+
+            var created = await _subjectService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetSubject), new { id = created.SubjectId }, ApiResponse<SubjectDto>.SuccessResponse(created, "Subject created successfully.", 201));
         }
 
-        // DELETE: api/Subjects/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteSubject(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteSubject(int id)
         {
             var success = await _subjectService.DeleteAsync(id);
             if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No subject found with ID {id} to delete.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Subject deleted successfully."));
         }
     }
 }

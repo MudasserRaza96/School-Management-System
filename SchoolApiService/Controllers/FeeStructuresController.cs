@@ -1,13 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 
 namespace SchoolApiService.Controllers
 {
@@ -23,134 +20,88 @@ namespace SchoolApiService.Controllers
             _context = context;
         }
 
-        // GET: api/FeeStructures
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<FeeStructure>>> GetdbsFeeStructure()
+        public async Task<ActionResult<ApiResponse<IEnumerable<FeeStructureDto>>>> GetFeeStructures()
         {
-            return await _context.dbsFeeStructure.ToListAsync();
+            var list = await _context.dbsFeeStructure.ToListAsync();
+            var dtos = list.Select(f => new FeeStructureDto
+            {
+                FeeStructureId = f.FeeStructureId,
+                StandardId = f.StandardId,
+                FeeTypeId = f.FeeTypeId,
+                Amount = f.Amount
+            });
+
+            return Ok(ApiResponse<IEnumerable<FeeStructureDto>>.SuccessResponse(dtos, "Fee structures retrieved successfully."));
         }
 
-        // GET: api/FeeStructures/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<FeeStructure>> GetFeeStructure(int id)
+        public async Task<ActionResult<ApiResponse<FeeStructureDto>>> GetFeeStructure(int id)
         {
-            var feeStructure = await _context.dbsFeeStructure.FindAsync(id);
-
-            if (feeStructure == null)
+            var f = await _context.dbsFeeStructure.FindAsync(id);
+            if (f == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<FeeStructureDto>.ErrorResponse($"No fee structure found with ID {id}.", statusCode: 404));
             }
 
-            return feeStructure;
+            var dto = new FeeStructureDto
+            {
+                FeeStructureId = f.FeeStructureId,
+                StandardId = f.StandardId,
+                FeeTypeId = f.FeeTypeId,
+                Amount = f.Amount
+            };
+
+            return Ok(ApiResponse<FeeStructureDto>.SuccessResponse(dto, "Fee structure retrieved successfully."));
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<ApiResponse<FeeStructureDto>>> PostFeeStructure(FeeStructureDto dto)
+        {
+            var entity = new FeeStructure
+            {
+                StandardId = dto.StandardId,
+                FeeTypeId = dto.FeeTypeId,
+                Amount = dto.Amount
+            };
+
+            _context.dbsFeeStructure.Add(entity);
+            await _context.SaveChangesAsync();
+            dto.FeeStructureId = entity.FeeStructureId;
+
+            return CreatedAtAction(nameof(GetFeeStructure), new { id = dto.FeeStructureId }, ApiResponse<FeeStructureDto>.SuccessResponse(dto, "Fee structure created successfully.", 201));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateFeeStructure(int id, FeeStructure updatedFeeStructure)
+        public async Task<ActionResult<ApiResponse<object>>> UpdateFeeStructure(int id, FeeStructureDto dto)
         {
-            try
+            var entity = await _context.dbsFeeStructure.FindAsync(id);
+            if (entity == null)
             {
-                // Check if the FeeStructure with the given id exists
-                FeeStructure existingFeeStructure = await _context.dbsFeeStructure.FindAsync(id);
-
-                if (existingFeeStructure == null)
-                {
-                    return NotFound("FeeStructure not found");
-                }
-
-                // Update the properties of existingFeeStructure with the values from updatedFeeStructure
-                existingFeeStructure.FeeTypeId = updatedFeeStructure.FeeTypeId;
-                existingFeeStructure.TypeName = updatedFeeStructure.TypeName;
-                existingFeeStructure.StandardId = updatedFeeStructure.StandardId;
-                existingFeeStructure.StandardName = updatedFeeStructure.StandardName;
-                existingFeeStructure.Monthly = updatedFeeStructure.Monthly;
-                existingFeeStructure.Yearly = updatedFeeStructure.Yearly;
-                existingFeeStructure.FeeAmount = updatedFeeStructure.FeeAmount;
-
-                // Update the corresponding FeeType and Standard based on their Ids
-                FeeType feeType = await _context.dbsFeeType.FindAsync(updatedFeeStructure.FeeTypeId);
-                if (feeType != null)
-                {
-                    existingFeeStructure.TypeName = feeType.TypeName;
-                }
-
-                Standard standard = await _context.dbsStandard.FindAsync(updatedFeeStructure.StandardId);
-                if (standard != null)
-                {
-                    existingFeeStructure.StandardName = standard.StandardName;
-                }
-
-                // Save the changes to the database
-                _context.Update(existingFeeStructure);
-                await _context.SaveChangesAsync();
-
-                return Ok("FeeStructure updated successfully");
+                return NotFound(ApiResponse<object>.ErrorResponse($"No fee structure found with ID {id} to update.", statusCode: 404));
             }
-            catch (Exception ex)
-            {
-                // Handle exceptions appropriately
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
-            }
+
+            entity.StandardId = dto.StandardId;
+            entity.FeeTypeId = dto.FeeTypeId;
+            entity.Amount = dto.Amount;
+
+            await _context.SaveChangesAsync();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Fee structure updated successfully."));
         }
 
-
-        [HttpPost]
-        public async Task<IActionResult> CreateFeeStructure(FeeStructure feeStructure)
-        {
-            try
-            {
-                // Assuming StandardId is the foreign key linking FeeStructure to Standard
-                Standard standard = await _context.dbsStandard.FindAsync(feeStructure.StandardId);
-
-                if (standard == null)
-                {
-                    return NotFound("Standard not found");
-                }
-
-                feeStructure.StandardName = standard.StandardName;
-
-                // Assuming FeeTypeId is the foreign key linking FeeStructure to FeeType
-                FeeType feeType = await _context.dbsFeeType.FindAsync(feeStructure.FeeTypeId);
-
-                if (feeType == null)
-                {
-                    return NotFound("FeeType not found");
-                }
-
-                feeStructure.TypeName = feeType.TypeName;
-
-                // Save the FeeStructure to the database
-                _context.dbsFeeStructure.Add(feeStructure);
-                await _context.SaveChangesAsync();
-
-                return Ok("FeeStructure created successfully");
-            }
-            catch (Exception ex)
-            {
-                // Handle exceptions appropriately
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
-            }
-        }
-
-
-        // DELETE: api/FeeStructures/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteFeeStructure(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteFeeStructure(int id)
         {
-            var feeStructure = await _context.dbsFeeStructure.FindAsync(id);
-            if (feeStructure == null)
+            var entity = await _context.dbsFeeStructure.FindAsync(id);
+            if (entity == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No fee structure found with ID {id} to delete.", statusCode: 404));
             }
 
-            _context.dbsFeeStructure.Remove(feeStructure);
+            _context.dbsFeeStructure.Remove(entity);
             await _context.SaveChangesAsync();
 
-            return NoContent();
-        }
-
-        private bool FeeStructureExists(int id)
-        {
-            return _context.dbsFeeStructure.Any(e => e.FeeStructureId == id);
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Fee structure deleted successfully."));
         }
     }
 }

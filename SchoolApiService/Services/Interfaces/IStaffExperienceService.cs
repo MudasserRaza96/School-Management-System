@@ -1,13 +1,13 @@
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 
 namespace SchoolApiService.Services.Interfaces
 {
     public interface IStaffExperienceService
     {
-        Task<IEnumerable<StaffExperience>> GetAllStaffExperiencesAsync();
-        Task<StaffExperience?> GetStaffExperienceByIdAsync(int id);
-        Task<StaffExperience> CreateStaffExperienceAsync(StaffExperience staffExperience);
-        Task<(bool Succeeded, bool ConcurrencyError)> UpdateStaffExperienceAsync(int id, StaffExperience staffExperience);
+        Task<IEnumerable<StaffExperienceDto>> GetAllStaffExperiencesAsync();
+        Task<StaffExperienceDto?> GetStaffExperienceByIdAsync(int id);
+        Task<StaffExperienceDto> CreateStaffExperienceAsync(StaffExperienceDto dto);
+        Task<bool> UpdateStaffExperienceAsync(int id, StaffExperienceDto dto);
         Task<bool> DeleteStaffExperienceAsync(int id);
         Task<bool> StaffExperienceExistsAsync(int id);
     }

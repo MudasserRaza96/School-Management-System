@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
+using SchoolApiService.Models;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
@@ -17,84 +18,64 @@ namespace SchoolApiService.Controllers
             _feeService = feeService;
         }
 
-        // GET: api/Fees
         [HttpGet]
-        public async Task<ActionResult> Getfees()
+        public async Task<ActionResult<ApiResponse<IEnumerable<FeeDto>>>> GetFees()
         {
-            try
-            {
-                var fees = await _feeService.GetAllAsync();
-                return Ok(fees);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception: {ex}");
-                return StatusCode(500, $"Internal Server Error: {ex.Message}");
-            }
+            var fees = await _feeService.GetAllFeesAsync();
+            return Ok(ApiResponse<IEnumerable<FeeDto>>.SuccessResponse(fees, "Fees retrieved successfully."));
         }
 
-        // GET: api/Fees/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Fee>> GetFee(int id)
+        public async Task<ActionResult<ApiResponse<FeeDto>>> GetFee(int id)
         {
-            var fee = await _feeService.GetByIdAsync(id);
-
+            var fee = await _feeService.GetFeeByIdAsync(id);
             if (fee == null)
             {
-                return NotFound();
+                return NotFound(ApiResponse<FeeDto>.ErrorResponse($"No fee record found with ID {id}.", statusCode: 404));
             }
 
-            return fee;
+            return Ok(ApiResponse<FeeDto>.SuccessResponse(fee, "Fee record retrieved successfully."));
         }
 
-        // PUT: api/Fees/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutFee(int id, Fee fee)
+        public async Task<ActionResult<ApiResponse<object>>> PutFee(int id, FeeDto dto)
         {
-            if (id != fee.FeeId)
+            if (id != dto.FeeId)
             {
-                return BadRequest();
+                return BadRequest(ApiResponse<object>.ErrorResponse("URL ID and payload FeeId mismatch.", new List<string> { $"Provided ID '{id}' does not match payload ID '{dto.FeeId}'." }, 400));
             }
 
-            try
-            {
-                var result = await _feeService.UpdateAsync(id, fee);
-                if (!result)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception)
-            {
-                if (!await _feeService.ExistsAsync(id))
-                {
-                    return NotFound();
-                }
-                throw;
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/Fees
-        [HttpPost]
-        public async Task<ActionResult<Fee>> PostFee(Fee fee)
-        {
-            var created = await _feeService.CreateAsync(fee);
-            return CreatedAtAction("GetFee", new { id = created.FeeId }, created);
-        }
-
-        // DELETE: api/Fees/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteFee(int id)
-        {
-            var success = await _feeService.DeleteAsync(id);
+            var success = await _feeService.UpdateFeeAsync(id, dto);
             if (!success)
             {
-                return NotFound();
+                return NotFound(ApiResponse<object>.ErrorResponse($"No fee record found with ID {id} to update.", statusCode: 404));
             }
 
-            return NoContent();
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Fee record updated successfully."));
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<ApiResponse<FeeDto>>> PostFee(FeeDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.FeeName))
+            {
+                return BadRequest(ApiResponse<FeeDto>.ErrorResponse("Fee creation failed.", new List<string> { "FeeName is required." }, 400));
+            }
+
+            var created = await _feeService.CreateFeeAsync(dto);
+            return CreatedAtAction(nameof(GetFee), new { id = created.FeeId }, ApiResponse<FeeDto>.SuccessResponse(created, "Fee record created successfully.", 201));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteFee(int id)
+        {
+            var success = await _feeService.DeleteFeeAsync(id);
+            if (!success)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No fee record found with ID {id} to delete.", statusCode: 404));
+            }
+
+            return Ok(ApiResponse<object>.SuccessResponse(null!, "Fee record deleted successfully."));
         }
     }
 }

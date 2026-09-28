@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.DAL.SchoolContext;
 using SchoolApp.Models.DataModels;
+using SchoolApiService.DTOs;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Services.Implementations
@@ -14,69 +15,59 @@ namespace SchoolApiService.Services.Implementations
             _context = context;
         }
 
-        public async Task<IEnumerable<Standard>> GetAllAsync()
+        public async Task<IEnumerable<StandardDto>> GetAllAsync()
         {
-            return await _context.dbsStandard
-                .Include(m => m.Subjects)
-                .Include(m => m.ExamScheduleStandards)
-                .Include(m => m.Students)
-                .ToListAsync();
+            var stds = await _context.dbsStandard.ToListAsync();
+            return stds.Select(s => new StandardDto
+            {
+                StandardId = s.StandardId,
+                StandardName = s.StandardName ?? string.Empty
+            });
         }
 
-        public async Task<Standard?> GetByIdAsync(int id)
+        public async Task<StandardDto?> GetByIdAsync(int id)
         {
-            return await _context.dbsStandard
-                .Include(m => m.Subjects)
-                .Include(m => m.ExamScheduleStandards)
-                .Include(m => m.Students)
-                .FirstOrDefaultAsync(m => m.StandardId == id);
+            var s = await _context.dbsStandard.FindAsync(id);
+            if (s == null) return null;
+            return new StandardDto
+            {
+                StandardId = s.StandardId,
+                StandardName = s.StandardName ?? string.Empty
+            };
         }
 
-        public async Task<Standard> CreateAsync(Standard standard)
+        public async Task<StandardDto> CreateAsync(StandardDto dto)
         {
-            _context.dbsStandard.Add(standard);
+            var entity = new Standard
+            {
+                StandardName = dto.StandardName
+            };
+            _context.dbsStandard.Add(entity);
             await _context.SaveChangesAsync();
-            return standard;
+            dto.StandardId = entity.StandardId;
+            return dto;
         }
 
-        public async Task<bool> UpdateAsync(int id, Standard standard)
+        public async Task<bool> UpdateAsync(int id, StandardDto dto)
         {
-            if (id != standard.StandardId) return false;
+            if (id != dto.StandardId) return false;
 
-            _context.Entry(standard).State = EntityState.Modified;
+            var entity = await _context.dbsStandard.FindAsync(id);
+            if (entity == null) return false;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await ExistsAsync(id))
-                {
-                    return false;
-                }
-                throw;
-            }
-        }
-
-        public async Task<(bool Success, string? ErrorMessage)> DeleteAsync(int id)
-        {
-            var standard = await _context.dbsStandard.FindAsync(id);
-            if (standard == null)
-            {
-                return (false, null);
-            }
-
-            var hasStudents = await _context.dbsStudent.AnyAsync(s => s.StandardId == id);
-            if (hasStudents)
-            {
-                return (false, "Cannot delete Standard with associated Students.");
-            }
-
-            _context.dbsStandard.Remove(standard);
+            entity.StandardName = dto.StandardName;
             await _context.SaveChangesAsync();
-            return (true, null);
+            return true;
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var std = await _context.dbsStandard.FindAsync(id);
+            if (std == null) return false;
+
+            _context.dbsStandard.Remove(std);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<bool> ExistsAsync(int id)
