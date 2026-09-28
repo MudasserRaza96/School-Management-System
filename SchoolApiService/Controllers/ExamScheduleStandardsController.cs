@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolApiService.Services.Interfaces;
 using SchoolApiService.ViewModels;
 
 namespace SchoolApiService.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ExamScheduleStandardsController : ControllerBase

@@ -89,6 +89,7 @@ export class SidebarComponent implements OnInit {
           label: 'Roles & Security',
           icon: 'admin_panel_settings',
           children: [
+            { label: 'Users Management', icon: 'group', route: '/users' },
             { label: 'Role Management', icon: 'manage_accounts', route: '/roles' },
             { label: 'Assign Role', icon: 'person_add', route: '/assign-role' }
           ]

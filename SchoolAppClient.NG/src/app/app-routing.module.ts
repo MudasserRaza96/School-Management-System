@@ -63,17 +63,15 @@ import { HomepageComponent } from './Components/homepage/homepage.component';
 import { RegistrationComponent } from './Authentication/SecurityComponents/registration/registration.component';
 import { RolesManagementComponent } from './Authentication/SecurityComponents/roles-management/roles-management.component';
 import { AssignRoleComponent } from './Authentication/SecurityComponents/assign-role/assign-role.component';
-
+import { UsersManagementComponent } from './Authentication/SecurityComponents/users-management/users-management.component';
 
 const routes: Routes = [
-  /*{ path: "", redirectTo: "/marksList", pathMatch: "full" },*/
-
-  /*{ path: "", redirectTo: "/marksentrynewList", pathMatch: "full" },*/
-
   { path: "", redirectTo: "/home", pathMatch: "full" },
-
   { path: "login", component: LoginComponent },
   { path: 'register', component: RegistrationComponent },
+  { path: 'users', component: UsersManagementComponent },
+  { path: 'roles', component: RolesManagementComponent },
+  { path: 'assign-role', component: AssignRoleComponent },
 
   /*{ path: "", redirectTo: "/attendanceList", pathMatch: "full" },*/
 

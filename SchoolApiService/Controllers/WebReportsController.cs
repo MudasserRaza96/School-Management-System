@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class WebReportsController : ControllerBase

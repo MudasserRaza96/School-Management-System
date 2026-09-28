@@ -1,88 +1,256 @@
-<div class="assign-role-container">
-  <div class="card form-card">
-    <div class="card-header">
-      <div class="header-icon-wrapper">
-        <mat-icon class="header-icon">person_add</mat-icon>
+<div class="user-roles-container">
+  <!-- Feedback Banners -->
+  <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
+    <mat-icon class="alert-icon">check_circle</mat-icon>
+    <span>{{ successMessage }}</span>
+    <button type="button" class="btn-close" (click)="clearMessages()"></button>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <mat-icon class="alert-icon">error</mat-icon>
+    <span>{{ errorMessage }}</span>
+    <button type="button" class="btn-close" (click)="clearMessages()"></button>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- VIEW 1: USER ROLES TABLE LIST VIEW (Image 1) -->
+  <!-- ========================================== -->
+  <div *ngIf="currentView === 'list'">
+    <!-- Top Action Bar -->
+    <div class="top-bar-card mb-3">
+      <div class="top-left-group">
+        <h2 class="page-title">UserRoles</h2>
+        <div class="export-btn-group">
+          <button class="btn btn-export-excel" title="Export to Excel">
+            <mat-icon>save_alt</mat-icon>
+          </button>
+          <button class="btn btn-export-print" title="Print List">
+            <mat-icon>print</mat-icon>
+          </button>
+        </div>
       </div>
-      <div>
-        <h3 class="card-title">Assign Security Role to User</h3>
-        <p class="card-subtitle">Select a target user by username/email and assign a security role</p>
+
+      <div class="top-right-group">
+        <!-- Filter Select Dropdown (Users only) -->
+        <select class="form-select filter-select" [(ngModel)]="selectedFilterUserOrRole" (change)="applyTableFilter()">
+          <option value="">-- Select --</option>
+          <option *ngFor="let u of userAssignments" [value]="u.username">
+            {{ u.username }}
+          </option>
+        </select>
+
+        <!-- Purple Assign Roles Button -->
+        <button class="btn btn-purple-assign" (click)="openAssignView()">
+          <mat-icon>person</mat-icon> Assign Roles
+        </button>
+
+        <!-- Create Button -->
+        <button class="btn btn-outline-create" (click)="openAssignView()">
+          + Create
+        </button>
       </div>
     </div>
 
-    <div class="card-body">
-      <!-- Success Banner -->
-      <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
-        <mat-icon class="alert-icon">check_circle</mat-icon>
-        <span>{{ successMessage }}</span>
-        <button type="button" class="btn-close" (click)="clearMessages()"></button>
+    <!-- Filter & Search Controls -->
+    <div class="search-bar-row mb-3">
+      <div class="search-box-wrapper">
+        <input type="text" class="form-control table-search-input" placeholder="search by user or role"
+          [(ngModel)]="tableSearchQuery" (input)="applyTableFilter()" />
+      </div>
+      <button class="btn btn-reset" (click)="resetTableFilter()">Reset</button>
+    </div>
+
+    <!-- Table Card -->
+    <div class="table-card">
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Loading User Roles...</p>
       </div>
 
-      <!-- Error Banner -->
-      <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
-        <mat-icon class="alert-icon">error</mat-icon>
-        <span>{{ errorMessage }}</span>
-        <button type="button" class="btn-close" (click)="clearMessages()"></button>
+      <div *ngIf="!isLoading && filteredTableRows.length === 0" class="empty-state">
+        <mat-icon class="empty-icon">security</mat-icon>
+        <h4>No User Roles Found</h4>
+        <p>No matching user-role records exist.</p>
       </div>
 
-      <form (ngSubmit)="assignRole()">
-        <!-- Username / Email Input -->
-        <div class="mb-4">
-          <label class="form-label">
-            <mat-icon class="label-icon">person</mat-icon>
-            Username or Email Address <span class="text-danger">*</span>
-          </label>
-          <input 
-            type="text" 
-            class="form-control form-control-lg" 
-            placeholder="e.g. johndoe or user@school.com" 
-            [(ngModel)]="username" 
-            name="username"
-            required 
-          />
-          <div class="form-text text-muted">
-            Enter the exact username or email of the registered user.
-          </div>
-        </div>
+      <div *ngIf="!isLoading && filteredTableRows.length > 0" class="table-responsive">
+        <table class="table custom-user-roles-table">
+          <thead>
+            <tr>
+              <th scope="col" style="width: 70px;">Id</th>
+              <th scope="col">User</th>
+              <th scope="col">Role</th>
+              <th scope="col" style="width: 120px;">Status</th>
+              <th scope="col" class="text-center" style="width: 140px;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of filteredTableRows; let i = index">
+              <td>{{ row.rowId }}</td>
+              <td class="user-cell">{{ row.username }}</td>
+              <td class="role-cell">{{ row.roleName }}</td>
+              <td><span class="status-active">Active</span></td>
+              <td class="text-center action-cell">
+                <button class="btn-action-icon edit-icon-btn me-2" (click)="openAssignView(row.username)"
+                  title="Edit User Roles">
+                  <mat-icon>edit_note</mat-icon>
+                </button>
+                <button class="btn-action-icon delete-icon-btn" (click)="deleteRoleRow(row)"
+                  title="Remove Role Assignment">
+                  <mat-icon>delete_outline</mat-icon>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
-        <!-- Role Select Dropdown -->
-        <div class="mb-4">
-          <label class="form-label">
-            <mat-icon class="label-icon">admin_panel_settings</mat-icon>
-            Select Role <span class="text-danger">*</span>
-          </label>
 
-          <select 
-            class="form-select form-select-lg" 
-            [(ngModel)]="selectedRole" 
-            name="selectedRole" 
-            required
-            [disabled]="isLoadingRoles"
-          >
-            <option value="" disabled selected>-- Select a Security Role --</option>
-            <option *ngFor="let role of roles" [value]="role.name">
-              {{ role.name }}
+  <!-- ==================================================== -->
+  <!-- VIEW 2: ASSIGN ROLES TO USER (DUAL TRANSFER BOX) (Image 2) -->
+  <!-- ==================================================== -->
+  <div *ngIf="currentView === 'assign'" class="assign-view-container">
+    <!-- Header Controls -->
+    <div class="assign-header-bar mb-3">
+      <div class="assign-title-group">
+        <h3 class="assign-page-title">
+          <mat-icon class="title-user-icon">person</mat-icon> Assign Roles to User
+        </h3>
+        <!-- Selected User Dropdown / Label -->
+        <div class="user-selector-wrapper">
+          <select class="form-select user-select-dropdown" [(ngModel)]="selectedUsername"
+            (change)="onUserSelectChange()">
+            <option *ngFor="let u of userAssignments" [value]="u.username">
+              {{ u.username }} ({{ u.email }})
             </option>
           </select>
+        </div>
+      </div>
 
-          <div *ngIf="isLoadingRoles" class="form-text text-info">
-            <span class="spinner-border spinner-border-sm me-1" role="status"></span> Loading roles list...
+      <div class="assign-header-actions">
+        <button class="btn btn-back-list me-2" (click)="switchToList()">
+          &larr; Back to List
+        </button>
+        <button class="btn btn-blue-update" (click)="saveUserRoles()" [disabled]="isSaving">
+          <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+          {{ isSaving ? 'Updating...' : 'Update' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Instruction Banner -->
+    <div class="instruction-banner mb-4">
+      <mat-icon class="pin-icon">push_pin</mat-icon>
+      <span>
+        <strong>Instructions:</strong> Check the roles you want to assign or unassign, then click the arrow buttons to
+        move them. Click "Update" when done.
+      </span>
+    </div>
+
+    <!-- Dual Transfer Columns -->
+    <div class="transfer-box-wrapper">
+      <!-- Left Column: Assigned Roles (Green) -->
+      <div class="transfer-card assigned-card">
+        <div class="transfer-card-header green-header">
+          <div class="header-label">
+            <mat-icon class="header-check-icon">check_circle_outline</mat-icon>
+            <span>Assigned Roles</span>
+          </div>
+          <span class="count-pill green-pill">{{ assignedRoles.length }}</span>
+        </div>
+
+        <div class="transfer-card-body">
+          <!-- Search box -->
+          <div class="transfer-search-wrapper mb-3">
+            <mat-icon class="search-mini-icon">search</mat-icon>
+            <input type="text" class="form-control transfer-search-input" placeholder="Search assigned roles..."
+              [(ngModel)]="searchAssignedQuery" />
+          </div>
+
+          <!-- Select All -->
+          <div class="form-check select-all-check mb-2">
+            <input type="checkbox" class="form-check-input" id="selectAllAssignedCheck" [(ngModel)]="selectAllAssigned"
+              (change)="toggleSelectAllAssigned()" />
+            <label class="form-check-label fw-bold" for="selectAllAssignedCheck">Select All</label>
+          </div>
+          <hr class="divider mb-2">
+
+          <!-- Role Checklist -->
+          <div class="role-checklist-scroll">
+            <div *ngFor="let item of visibleAssignedRoles" class="form-check role-item-check mb-2">
+              <input type="checkbox" class="form-check-input" [id]="'assigned_' + item.name"
+                [(ngModel)]="item.checked" />
+              <label class="form-check-label" [for]="'assigned_' + item.name">
+                {{ item.name }}
+              </label>
+            </div>
+
+            <div *ngIf="visibleAssignedRoles.length === 0" class="no-items-text">
+              No assigned roles
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Submit Button -->
-        <div class="d-grid gap-2">
-          <button 
-            type="submit" 
-            class="btn btn-primary btn-lg submit-btn" 
-            [disabled]="isSubmitting || isLoadingRoles"
-          >
-            <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status"></span>
-            <mat-icon *ngIf="!isSubmitting" class="btn-icon">how_to_reg</mat-icon>
-            {{ isSubmitting ? 'Assigning Role...' : 'Assign Role' }}
-          </button>
+      <!-- Center Move Buttons -->
+      <div class="transfer-controls-column">
+        <!-- Move Left Button (Green Arrow) -->
+        <button class="btn-circle-transfer btn-green-left mb-3" (click)="moveUnassignedToAssigned()"
+          title="Move Selected to Assigned">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+
+        <!-- Move Right Button (Red Arrow) -->
+        <button class="btn-circle-transfer btn-red-right" (click)="moveAssignedToUnassigned()"
+          title="Move Selected to Unassigned">
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </div>
+
+      <!-- Right Column: Unassigned Roles (Red) -->
+      <div class="transfer-card unassigned-card">
+        <div class="transfer-card-header red-header">
+          <div class="header-label">
+            <mat-icon class="header-check-icon">highlight_off</mat-icon>
+            <span>Unassigned Roles</span>
+          </div>
+          <span class="count-pill red-pill">{{ unassignedRoles.length }}</span>
         </div>
-      </form>
+
+        <div class="transfer-card-body">
+          <!-- Search box -->
+          <div class="transfer-search-wrapper mb-3">
+            <mat-icon class="search-mini-icon">search</mat-icon>
+            <input type="text" class="form-control transfer-search-input" placeholder="Search unassigned roles..."
+              [(ngModel)]="searchUnassignedQuery" />
+          </div>
+
+          <!-- Select All -->
+          <div class="form-check select-all-check mb-2">
+            <input type="checkbox" class="form-check-input" id="selectAllUnassignedCheck"
+              [(ngModel)]="selectAllUnassigned" (change)="toggleSelectAllUnassigned()" />
+            <label class="form-check-label fw-bold" for="selectAllUnassignedCheck">Select All</label>
+          </div>
+          <hr class="divider mb-2">
+
+          <!-- Role Checklist -->
+          <div class="role-checklist-scroll">
+            <div *ngFor="let item of visibleUnassignedRoles" class="form-check role-item-check mb-2">
+              <input type="checkbox" class="form-check-input" [id]="'unassigned_' + item.name"
+                [(ngModel)]="item.checked" />
+              <label class="form-check-label" [for]="'unassigned_' + item.name">
+                {{ item.name }}
+              </label>
+            </div>
+
+            <div *ngIf="visibleUnassignedRoles.length === 0" class="no-items-text">
+              No unassigned roles available
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolApiService.Services.Interfaces;
 using SchoolApp.Models.DataModels.SecurityModels;
 
 namespace SchoolApiService.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class RolesController : ControllerBase

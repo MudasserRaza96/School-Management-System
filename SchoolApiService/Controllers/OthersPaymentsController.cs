@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolApp.Models.DataModels;
 using SchoolApiService.Services.Interfaces;
 
 namespace SchoolApiService.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class OthersPaymentsController : ControllerBase

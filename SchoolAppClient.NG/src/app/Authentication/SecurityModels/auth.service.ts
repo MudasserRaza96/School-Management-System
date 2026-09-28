@@ -30,17 +30,44 @@ export class AuthService {
         tap((response: AuthResponse) => {
           console.info(response);
           this.doLoginUser(response);
-
         })
       );
+  }
+
+  getUsers(): Observable<any[]> {
+    return this.http.get<any[]>(api);
+  }
+
+  getUserById(id: string): Observable<any> {
+    return this.http.get<any>(api + id);
   }
 
   register(user: RegistrationRequest): Observable<any> {
     return this.http.post(api + 'register', user);
   }
 
+  updateUser(id: string, user: { username: string; email: string; role?: string[]; password?: string }): Observable<any> {
+    return this.http.put(api + id, user);
+  }
+
+  deleteUser(id: string): Observable<any> {
+    return this.http.delete(api + id);
+  }
+
   assignRole(roleData: { username: string; role: string; roles?: string[] }): Observable<any> {
     return this.http.post(api + 'assign-role', roleData);
+  }
+
+  getUserRoles(): Observable<any[]> {
+    return this.http.get<any[]>(api + 'user-roles');
+  }
+
+  updateUserRole(roleData: { username: string; role: string; roles?: string[] }): Observable<any> {
+    return this.http.put(api + 'update-user-role', roleData);
+  }
+
+  removeUserRole(username: string, roleName: string): Observable<any> {
+    return this.http.delete(api + 'remove-user-role/' + encodeURIComponent(username) + '/' + encodeURIComponent(roleName));
   }
 
   getRoles(): Observable<any[]> {
@@ -63,17 +90,17 @@ export class AuthService {
     return this.http.delete<any>(rolesApi + id);
   }
 
-
-
   private doLoginUser(data: AuthResponse) {
     this.loggedUser = data.email;
     this.storeJwtToken(data.token);
     this.storeUser(data);
     this.isAuthenticatedSubject.next(true);
   }
+
   private storeUser(user: AuthResponse) {
     localStorage.setItem(this.JWT_USER, JSON.stringify(user));
   }
+
   private storeJwtToken(jwt: string) {
     localStorage.setItem(this.JWT_TOKEN, jwt);
   }
@@ -82,8 +109,6 @@ export class AuthService {
     localStorage.removeItem(this.JWT_TOKEN);
     localStorage.removeItem(this.JWT_USER);
     this.isAuthenticatedSubject.next(false);
-    //this.router.navigate(['/']);
-    //window.location.href = '/';
     window.location.href = '/login';
     localStorage.removeItem("redirectTo");
   }
